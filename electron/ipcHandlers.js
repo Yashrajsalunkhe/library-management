@@ -256,6 +256,17 @@ module.exports = (ipcMain) => {
         params.push(filters.memberId);
       }
 
+      if (filters.search) {
+        sql += ' AND (m.name LIKE ? OR m.email LIKE ? OR m.phone LIKE ? OR p.receipt_number LIKE ?)';
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      }
+
+      if (filters.mode) {
+        sql += ' AND p.mode = ?';
+        params.push(filters.mode);
+      }
+
       if (filters.dateFrom) {
         sql += ' AND DATE(p.paid_at) >= ?';
         params.push(filters.dateFrom);
@@ -264,6 +275,11 @@ module.exports = (ipcMain) => {
       if (filters.dateTo) {
         sql += ' AND DATE(p.paid_at) <= ?';
         params.push(filters.dateTo);
+      }
+
+      if (filters.planId) {
+        sql += ' AND p.plan_id = ?';
+        params.push(parseInt(filters.planId));
       }
 
       sql += ' ORDER BY p.paid_at DESC';
