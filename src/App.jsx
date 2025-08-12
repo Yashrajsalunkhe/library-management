@@ -6,8 +6,8 @@ import Layout from './components/Layout';
 import NotificationContainer from './components/NotificationContainer';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
+import Payments from './pages/Payments';
 // import Attendance from './pages/Attendance';
-// import Payments from './pages/Payments';
 // import Reports from './pages/Reports';
 // import Settings from './pages/Settings';
 import './styles/globals.css';
@@ -74,10 +74,10 @@ const AppContent = () => {
         return <Dashboard />;
       case 'members':
         return <Members initialAction={pageProps} />;
+      case 'payments':
+        return <Payments />;
       // case 'attendance':
       //   return <Attendance />;
-      // case 'payments':
-      //   return <Payments />;
       // case 'reports':
       //   return <Reports initialTab={pageProps.tab} />;
       // case 'settings':
