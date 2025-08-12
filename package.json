@@ -1,0 +1,60 @@
+{
+  "name": "library-management",
+  "version": "1.0.0",
+  "description": "Study Room Library Management System",
+  "type": "commonjs",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "electron": "NODE_ENV=development electron .",
+    "build": "vite build",
+    "electron:build": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --publish=never",
+    "rebuild": "electron-rebuild",
+    "postinstall": "electron-rebuild"
+  },
+  "keywords": ["library", "management", "electron", "react", "sqlite", "biometric"],
+  "author": "Yashraj",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "electron": "^37.2.6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "vite": "^7.1.1",
+    "nodemailer": "^6.9.8",
+    "node-cron": "^3.0.3",
+    "exceljs": "^4.4.0",
+    "pdfmake": "^0.2.10",
+    "axios": "^1.6.7",
+    "bcryptjs": "^2.4.3",
+    "date-fns": "^3.3.1",
+    "qrcode": "^1.5.3",
+    "dotenv": "^16.4.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron-rebuild": "^3.2.9",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.yashraj.library-management",
+    "productName": "Library Management System",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
