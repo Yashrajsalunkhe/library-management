@@ -35,7 +35,8 @@ contextBridge.exposeInMainWorld('api', {
     checkin: (data) => ipcRenderer.invoke('attendance:checkin', data),
     checkout: (data) => ipcRenderer.invoke('attendance:checkout', data),
     list: (filters) => ipcRenderer.invoke('attendance:list', filters),
-    today: () => ipcRenderer.invoke('attendance:today')
+    today: () => ipcRenderer.invoke('attendance:today'),
+    add: (attendance) => ipcRenderer.invoke('attendance:add', attendance)
   },
 
   // Dashboard
@@ -47,6 +48,7 @@ contextBridge.exposeInMainWorld('api', {
   report: {
     attendance: (filters) => ipcRenderer.invoke('report:attendance', filters),
     payments: (filters) => ipcRenderer.invoke('report:payments', filters),
+    export: (options) => ipcRenderer.invoke('report:export', options),
     exportAttendance: (options) => ipcRenderer.invoke('report:export-attendance', options),
     exportPayments: (options) => ipcRenderer.invoke('report:export-payments', options),
     exportMembers: (options) => ipcRenderer.invoke('report:export-members', options),

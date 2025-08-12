@@ -192,7 +192,7 @@ const Payments = () => {
     <div className="page-container">
       <div className="page-header">
         <div className="page-title-section">
-          <h1>💰 Payments Management</h1>
+          <h1> Payments Management</h1>
           <p>Track and manage all payment transactions</p>
         </div>
         <button
