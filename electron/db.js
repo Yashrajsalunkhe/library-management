@@ -34,7 +34,10 @@ const createTables = () => {
       name TEXT NOT NULL,
       email TEXT,
       phone TEXT,
+      birth_date TEXT,
+      city TEXT,
       address TEXT,
+      seat_no TEXT UNIQUE,
       plan_id INTEGER,
       join_date TEXT NOT NULL,
       end_date TEXT NOT NULL,
@@ -120,6 +123,25 @@ const createTables = () => {
     )
   `).run();
 
+  // Migrate existing members table to add new columns
+  try {
+    // Check if new columns exist, if not add them
+    const columns = db.prepare("PRAGMA table_info(members)").all();
+    const columnNames = columns.map(col => col.name);
+    
+    if (!columnNames.includes('birth_date')) {
+      db.prepare('ALTER TABLE members ADD COLUMN birth_date TEXT').run();
+    }
+    if (!columnNames.includes('city')) {
+      db.prepare('ALTER TABLE members ADD COLUMN city TEXT').run();
+    }
+    if (!columnNames.includes('seat_no')) {
+      db.prepare('ALTER TABLE members ADD COLUMN seat_no TEXT UNIQUE').run();
+    }
+  } catch (error) {
+    console.log('Migration skipped or already applied:', error.message);
+  }
+
   // Insert default membership plans
   const planExists = db.prepare('SELECT COUNT(*) as count FROM membership_plans').get();
   if (planExists.count === 0) {
@@ -152,6 +174,45 @@ const createTables = () => {
 
 // Initialize tables
 createTables();
+
+// Run migrations for existing databases
+const runMigrations = () => {
+  try {
+    // Check if new columns exist in members table
+    const tableInfo = db.prepare("PRAGMA table_info(members)").all();
+    const columnNames = tableInfo.map(col => col.name);
+    
+    // Add missing columns one by one (without UNIQUE constraint first)
+    const columnsToAdd = [
+      { name: 'birth_date', sql: 'ALTER TABLE members ADD COLUMN birth_date TEXT' },
+      { name: 'city', sql: 'ALTER TABLE members ADD COLUMN city TEXT' },
+      { name: 'seat_no', sql: 'ALTER TABLE members ADD COLUMN seat_no TEXT' }
+    ];
+    
+    for (const column of columnsToAdd) {
+      if (!columnNames.includes(column.name)) {
+        console.log(`Adding missing column: ${column.name}`);
+        try {
+          db.prepare(column.sql).run();
+          console.log(`Successfully added column: ${column.name}`);
+        } catch (error) {
+          if (error.message.includes('duplicate column name')) {
+            console.log(`Column ${column.name} already exists, skipping...`);
+          } else {
+            console.error(`Error adding column ${column.name}:`, error.message);
+          }
+        }
+      }
+    }
+    
+    console.log('Database migrations completed successfully');
+  } catch (error) {
+    console.error('Migration error:', error);
+  }
+};
+
+// Run migrations
+runMigrations();
 
 // Helper functions for common database operations
 const dbHelpers = {

@@ -15,7 +15,8 @@ contextBridge.exposeInMainWorld('api', {
     get: (id) => ipcRenderer.invoke('member:get', id),
     update: (member) => ipcRenderer.invoke('member:update', member),
     delete: (id) => ipcRenderer.invoke('member:delete', id),
-    renew: (renewal) => ipcRenderer.invoke('member:renew', renewal)
+    renew: (renewal) => ipcRenderer.invoke('member:renew', renewal),
+    getNextSeatNumber: () => ipcRenderer.invoke('member:getNextSeatNumber')
   },
 
   // Membership Plans
@@ -85,8 +86,19 @@ contextBridge.exposeInMainWorld('api', {
 
   // Settings
   settings: {
-    get: () => ipcRenderer.invoke('settings:get'),
-    update: (settings) => ipcRenderer.invoke('settings:update', settings)
+    getSettings: () => ipcRenderer.invoke('settings:getSettings'),
+    saveSettings: (settings) => ipcRenderer.invoke('settings:saveSettings', settings)
+  },
+
+  // Backup
+  backup: {
+    createBackup: () => ipcRenderer.invoke('backup:createBackup'),
+    restoreBackup: () => ipcRenderer.invoke('backup:restoreBackup')
+  },
+
+  // Data
+  data: {
+    exportData: () => ipcRenderer.invoke('data:exportData')
   },
 
   // File operations

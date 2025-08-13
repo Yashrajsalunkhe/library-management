@@ -42,24 +42,63 @@ module.exports = (ipcMain) => {
         // Generate QR code data
         const qrData = `LMS-${Date.now()}`;
         
+        // Auto-assign seat number if not provided
+        let seatNo = member.seatNo;
+        if (!seatNo) {
+          // Find next available seat number
+          const existingSeats = query('SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)');
+          const seatNumbers = existingSeats.map(s => parseInt(s.seat_no)).filter(n => !isNaN(n));
+          
+          let nextSeat = 1;
+          for (let i = 0; i < seatNumbers.length; i++) {
+            if (seatNumbers[i] !== nextSeat) {
+              break;
+            }
+            nextSeat++;
+          }
+          seatNo = nextSeat.toString();
+        }
+        
         const info = run(`
-          INSERT INTO members (name, email, phone, address, plan_id, join_date, end_date, qr_code)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO members (name, email, phone, birth_date, city, address, seat_no, plan_id, join_date, end_date, qr_code)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           member.name,
           member.email,
           member.phone,
+          member.birthDate,
+          member.city,
           member.address,
+          seatNo,
           member.planId,
           member.joinDate,
           member.endDate,
           qrData
         ]);
 
-        return { id: info.lastInsertRowid, qrCode: qrData };
+        return { id: info.lastInsertRowid, qrCode: qrData, seatNo };
       });
 
       return { success: true, data: result };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('member:getNextSeatNumber', async (event) => {
+    try {
+      const existingSeats = query('SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)');
+      const seatNumbers = existingSeats.map(s => parseInt(s.seat_no)).filter(n => !isNaN(n));
+      
+      let nextSeat = 1;
+      for (let i = 0; i < seatNumbers.length; i++) {
+        if (seatNumbers[i] !== nextSeat) {
+          break;
+        }
+        nextSeat++;
+      }
+      
+      return { success: true, data: nextSeat.toString() };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -135,8 +174,17 @@ module.exports = (ipcMain) => {
 
   ipcMain.handle('member:delete', async (event, id) => {
     try {
-      run('UPDATE members SET status = ? WHERE id = ?', ['suspended', id]);
-      return { success: true };
+      // Get current member status
+      const member = get('SELECT status FROM members WHERE id = ?', [id]);
+      if (!member) {
+        return { success: false, message: 'Member not found' };
+      }
+      
+      // Toggle status between suspended and active
+      const newStatus = member.status === 'suspended' ? 'active' : 'suspended';
+      run('UPDATE members SET status = ? WHERE id = ?', [newStatus, id]);
+      
+      return { success: true, message: `Member ${newStatus === 'suspended' ? 'suspended' : 'activated'} successfully` };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -734,6 +782,163 @@ module.exports = (ipcMain) => {
       return { success: true, message: `Report exported to ${filename}`, filepath };
     } catch (error) {
       console.error('Export error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // SETTINGS MANAGEMENT
+  // ===================
+  
+  ipcMain.handle('settings:getSettings', async (event) => {
+    try {
+      const settings = query('SELECT * FROM settings');
+      const settingsObj = {};
+      
+      settings.forEach(setting => {
+        const [category, key] = setting.key.split('.');
+        if (!settingsObj[category]) {
+          settingsObj[category] = {};
+        }
+        
+        // Parse JSON values or use string values
+        try {
+          settingsObj[category][key] = JSON.parse(setting.value);
+        } catch {
+          settingsObj[category][key] = setting.value;
+        }
+      });
+      
+      return { success: true, settings: settingsObj };
+    } catch (error) {
+      console.error('Get settings error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('settings:saveSettings', async (event, settings) => {
+    try {
+      transaction(() => {
+        // Clear existing settings
+        run('DELETE FROM settings');
+        
+        // Insert new settings
+        Object.keys(settings).forEach(category => {
+          Object.keys(settings[category]).forEach(key => {
+            const settingKey = `${category}.${key}`;
+            const value = typeof settings[category][key] === 'object' 
+              ? JSON.stringify(settings[category][key])
+              : settings[category][key].toString();
+            
+            run('INSERT INTO settings (key, value) VALUES (?, ?)', [settingKey, value]);
+          });
+        });
+      });
+      
+      return { success: true, message: 'Settings saved successfully' };
+    } catch (error) {
+      console.error('Save settings error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // BACKUP MANAGEMENT
+  // ===================
+  
+  ipcMain.handle('backup:createBackup', async (event) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const { shell } = require('electron');
+      
+      const backupDir = path.join(__dirname, '..', 'backups');
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const backupFile = path.join(backupDir, `library-backup-${timestamp}.db`);
+      const dbFile = path.join(__dirname, 'library.db');
+      
+      // Copy database file
+      fs.copyFileSync(dbFile, backupFile);
+      
+      return { success: true, message: 'Backup created successfully', filepath: backupFile };
+    } catch (error) {
+      console.error('Backup error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('backup:restoreBackup', async (event) => {
+    try {
+      const { dialog } = require('electron');
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Show file dialog to select backup file
+      const result = await dialog.showOpenDialog({
+        title: 'Select Backup File',
+        defaultPath: path.join(__dirname, '..', 'backups'),
+        filters: [{ name: 'Database Files', extensions: ['db'] }],
+        properties: ['openFile']
+      });
+      
+      if (!result.canceled && result.filePaths.length > 0) {
+        const backupFile = result.filePaths[0];
+        const dbFile = path.join(__dirname, 'library.db');
+        
+        // Copy backup file to database location
+        fs.copyFileSync(backupFile, dbFile);
+        
+        return { success: true, message: 'Backup restored successfully' };
+      }
+      
+      return { success: false, message: 'No backup file selected' };
+    } catch (error) {
+      console.error('Restore backup error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // DATA EXPORT
+  // ===================
+  
+  ipcMain.handle('data:exportData', async (event) => {
+    try {
+      const { dialog, shell } = require('electron');
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Show save dialog
+      const result = await dialog.showSaveDialog({
+        title: 'Export Data',
+        defaultPath: 'library-data-export.json',
+        filters: [{ name: 'JSON Files', extensions: ['json'] }]
+      });
+      
+      if (!result.canceled) {
+        // Export all data
+        const exportData = {
+          members: query('SELECT * FROM members'),
+          plans: query('SELECT * FROM plans'),
+          payments: query('SELECT * FROM payments'),
+          attendance: query('SELECT * FROM attendance'),
+          settings: query('SELECT * FROM settings'),
+          exportDate: new Date().toISOString()
+        };
+        
+        fs.writeFileSync(result.filePath, JSON.stringify(exportData, null, 2));
+        shell.showItemInFolder(result.filePath);
+        
+        return { success: true, message: 'Data exported successfully' };
+      }
+      
+      return { success: false, message: 'Export cancelled' };
+    } catch (error) {
+      console.error('Export data error:', error);
       return { success: false, message: error.message };
     }
   });

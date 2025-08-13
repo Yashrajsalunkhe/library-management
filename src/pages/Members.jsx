@@ -84,17 +84,23 @@ const Members = ({ initialAction = null }) => {
   };
 
   const handleDeleteMember = async (memberId) => {
-    if (confirm('Are you sure you want to suspend this member?')) {
+    const member = members.find(m => m.id === memberId);
+    const action = member.status === 'suspended' ? 'activate' : 'suspend';
+    const confirmMessage = action === 'suspend' 
+      ? 'Are you sure you want to suspend this member?' 
+      : 'Are you sure you want to activate this member?';
+    
+    if (confirm(confirmMessage)) {
       try {
         const result = await window.api.member.delete(memberId);
         if (result.success) {
-          success('Member suspended successfully');
+          success(`Member ${action}d successfully`);
           loadMembers();
         } else {
-          error(result.message || 'Failed to suspend member');
+          error(result.message || `Failed to ${action} member`);
         }
       } catch (err) {
-        error('Failed to suspend member');
+        error(`Failed to ${action} member`);
       }
     }
   };
@@ -116,16 +122,21 @@ const Members = ({ initialAction = null }) => {
     }
   };
 
-  const filteredMembers = members.filter(member => {
-    const searchMatch = !filters.search || 
+  const activeMembers = members.filter(member => 
+    member.status !== 'suspended' && 
+    (!filters.search || 
       member.name.toLowerCase().includes(filters.search.toLowerCase()) ||
       member.email?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      member.phone?.includes(filters.search);
-    
-    const statusMatch = !filters.status || member.status === filters.status;
-    
-    return searchMatch && statusMatch;
-  });
+      member.phone?.includes(filters.search))
+  );
+
+  const suspendedMembers = members.filter(member => 
+    member.status === 'suspended' && 
+    (!filters.search || 
+      member.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+      member.email?.toLowerCase().includes(filters.search.toLowerCase()) ||
+      member.phone?.includes(filters.search))
+  );
 
   if (loading) {
     return (
@@ -136,11 +147,109 @@ const Members = ({ initialAction = null }) => {
     );
   }
 
+  const renderMembersTable = (membersList, title, showActions = true) => (
+    <div className="card mb-6">
+      <div className="card-header">
+        <h3 className="card-title">{title} ({membersList.length})</h3>
+      </div>
+      {membersList.length > 0 ? (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Birth Date</th>
+                <th>City</th>
+                <th>Seat No</th>
+                <th>Plan</th>
+                <th>Join Date</th>
+                <th>End Date</th>
+                <th>Status</th>
+                {showActions && <th>Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {membersList.map(member => (
+                <tr key={member.id}>
+                  <td>#{member.id}</td>
+                  <td>
+                    <div>
+                      <div className="font-medium">{member.name}</div>
+                      {member.qr_code && (
+                        <div className="text-sm text-gray-500">QR: {member.qr_code}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      <div>{member.email || 'No email'}</div>
+                      <div>{member.phone || 'No phone'}</div>
+                    </div>
+                  </td>
+                  <td>
+                    {member.birth_date ? new Date(member.birth_date).toLocaleDateString() : 'N/A'}
+                  </td>
+                  <td>{member.city || 'N/A'}</td>
+                  <td>
+                    <span className="badge badge-info">#{member.seat_no || 'N/A'}</span>
+                  </td>
+                  <td>
+                    <div>
+                      <div>{member.plan_name || 'No plan'}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>
+                        ₹{member.plan_price || 0}
+                      </div>
+                    </div>
+                  </td>
+                  <td>{new Date(member.join_date).toLocaleDateString()}</td>
+                  <td>{new Date(member.end_date).toLocaleDateString()}</td>
+                  <td>{getStatusBadge(member.status, member.end_date)}</td>
+                  {showActions && (
+                    <td>
+                      <div className="flex gap-2">
+                        {member.status !== 'suspended' && (
+                          <button
+                            onClick={() => {
+                              setSelectedMember(member);
+                              setShowRenewModal(true);
+                            }}
+                            className="button button-success button-sm"
+                          >
+                            Renew
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteMember(member.id)}
+                          className="button button-danger button-sm"
+                        >
+                          {member.status === 'suspended' ? 'Activate' : 'Suspend'}
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="text-center text-gray-500 p-4">
+          No {title.toLowerCase()} found
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div>
+    <div className="page-container">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Members Management</h2>
+      <div className="page-header">
+        <div>
+          <h1>👥 Members Management</h1>
+          <p>Manage library members and their memberships</p>
+        </div>
         <button
           onClick={() => setShowAddModal(true)}
           className="button button-primary"
@@ -150,114 +259,35 @@ const Members = ({ initialAction = null }) => {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Search Filter */}
       <div className="card mb-4">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="form-group">
-            <label className="form-label">Search</label>
-            <input
-              type="text"
-              className="input"
-              placeholder="Search by name, email, or phone..."
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label className="form-label">Status</label>
-            <select
-              className="select"
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="expired">Expired</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">&nbsp;</label>
-            <button
-              onClick={loadMembers}
-              className="button button-secondary"
-              style={{ width: '100%' }}
-            >
-              Apply Filters
-            </button>
-          </div>
+        <div className="search-section">
+          <label>
+            <span className="search-icon">🔍</span>
+            Search Members
+          </label>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search by name, email, or phone..."
+            value={filters.search}
+            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+          />
         </div>
       </div>
 
-      {/* Members Table */}
-      <div className="card">
-        {filteredMembers.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Contact</th>
-                  <th>Plan</th>
-                  <th>End Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMembers.map(member => (
-                  <tr key={member.id}>
-                    <td>#{member.id}</td>
-                    <td>{member.name}</td>
-                    <td>
-                      <div style={{ fontSize: '0.75rem' }}>
-                        <div>{member.email || 'No email'}</div>
-                        <div>{member.phone || 'No phone'}</div>
-                      </div>
-                    </td>
-                    <td>
-                      {member.plan_name || 'No plan'}
-                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>
-                        ₹{member.plan_price || 0}
-                      </div>
-                    </td>
-                    <td>{member.end_date}</td>
-                    <td>{getStatusBadge(member.status, member.end_date)}</td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedMember(member);
-                            setShowRenewModal(true);
-                          }}
-                          className="button button-success"
-                          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                        >
-                          Renew
-                        </button>
-                        <button
-                          onClick={() => handleDeleteMember(member.id)}
-                          className="button button-danger"
-                          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                        >
-                          Suspend
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Active Members Section */}
+      {renderMembersTable(activeMembers, 'Active Members', true)}
+
+      {/* Suspended Members Section */}
+      {suspendedMembers.length > 0 && (
+        <>
+          <div className="alert alert-warning mb-4">
+            <strong>⚠️ Suspended Members</strong> - These members have been suspended and cannot access library services.
           </div>
-        ) : (
-          <div className="text-center text-gray-500 p-4">
-            No members found
-          </div>
-        )}
-      </div>
+          {renderMembersTable(suspendedMembers, 'Suspended Members', true)}
+        </>
+      )}
 
       {/* Add Member Modal */}
       {showAddModal && (
@@ -290,11 +320,31 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
     name: '',
     email: '',
     phone: '',
+    birthDate: '',
+    city: '',
     address: '',
+    seatNo: '',
     planId: '',
     joinDate: new Date().toISOString().split('T')[0],
     endDate: ''
   });
+  const [nextSeatNumber, setNextSeatNumber] = useState('');
+
+  useEffect(() => {
+    loadNextSeatNumber();
+  }, []);
+
+  const loadNextSeatNumber = async () => {
+    try {
+      const result = await window.api.member.getNextSeatNumber();
+      if (result.success) {
+        setNextSeatNumber(result.data);
+        setFormData(prev => ({ ...prev, seatNo: result.data }));
+      }
+    } catch (error) {
+      console.error('Failed to get next seat number:', error);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -304,7 +354,22 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
     if (name === 'planId' && value) {
       const selectedPlan = plans.find(p => p.id === parseInt(value));
       if (selectedPlan) {
-        const endDate = new Date();
+        const joinDate = new Date(formData.joinDate);
+        const endDate = new Date(joinDate);
+        endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
+        setFormData(prev => ({ 
+          ...prev, 
+          endDate: endDate.toISOString().split('T')[0] 
+        }));
+      }
+    }
+
+    // Auto-calculate end date when join date changes
+    if (name === 'joinDate' && value && formData.planId) {
+      const selectedPlan = plans.find(p => p.id === parseInt(formData.planId));
+      if (selectedPlan) {
+        const joinDate = new Date(value);
+        const endDate = new Date(joinDate);
         endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
         setFormData(prev => ({ 
           ...prev, 
@@ -321,101 +386,148 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal member-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">Add New Member</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem' }}>×</button>
+          <h3 className="modal-title">👤 Add New Member</h3>
+          <button onClick={onClose} className="modal-close" aria-label="Close modal">×</button>
         </div>
         
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="form-group">
-                <label className="form-label">Name *</label>
-                <input
-                  type="text"
-                  name="name"
-                  className="input"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+            <div className="form-section">
+              <h4>Personal Information</h4>
+              <div className="form-grid form-grid-2">
+                <div className="form-group">
+                  <label className="form-label required">Name *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    className="form-control"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  className="input"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    className="form-control"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  className="input"
-                  value={formData.phone}
-                  onChange={handleChange}
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label required">Mobile No *</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    className="form-control"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Membership Plan *</label>
-                <select
-                  name="planId"
-                  className="select"
-                  value={formData.planId}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select a plan</option>
-                  {plans.map(plan => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name} - ₹{plan.price} ({plan.duration_days} days)
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Birth Date</label>
+                  <input
+                    type="date"
+                    name="birthDate"
+                    className="form-control"
+                    value={formData.birthDate}
+                    onChange={handleChange}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Join Date</label>
-                <input
-                  type="date"
-                  name="joinDate"
-                  className="input"
-                  value={formData.joinDate}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">City</label>
+                  <input
+                    type="text"
+                    name="city"
+                    className="form-control"
+                    value={formData.city}
+                    onChange={handleChange}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">End Date</label>
-                <input
-                  type="date"
-                  name="endDate"
-                  className="input"
-                  value={formData.endDate}
-                  onChange={handleChange}
-                  required
-                />
+                <div className="form-group">
+                  <label className="form-label">Seat No</label>
+                  <input
+                    type="text"
+                    name="seatNo"
+                    className="form-control"
+                    value={formData.seatNo}
+                    onChange={handleChange}
+                    placeholder={`Next available: ${nextSeatNumber}`}
+                  />
+                  <small className="form-help">Leave empty to auto-assign next available seat</small>
+                </div>
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Address</label>
-              <textarea
-                name="address"
-                className="input"
-                rows="3"
-                value={formData.address}
-                onChange={handleChange}
-              />
+            <div className="form-section">
+              <h4>Membership Details</h4>
+              <div className="form-grid form-grid-2">
+                <div className="form-group">
+                  <label className="form-label required">Membership Plan *</label>
+                  <select
+                    name="planId"
+                    className="form-control"
+                    value={formData.planId}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select a plan</option>
+                    {plans.map(plan => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} - ₹{plan.price} ({plan.duration_days} days)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label required">Join Date *</label>
+                  <input
+                    type="date"
+                    name="joinDate"
+                    className="form-control"
+                    value={formData.joinDate}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label required">End Date *</label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    className="form-control"
+                    value={formData.endDate}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div className="form-group">
+                <label className="form-label">Address</label>
+                <textarea
+                  name="address"
+                  className="form-control"
+                  rows="3"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Enter full address..."
+                />
+              </div>
             </div>
           </div>
 
@@ -424,7 +536,7 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
               Cancel
             </button>
             <button type="submit" className="button button-primary">
-              Add Member
+              👤 Add Member
             </button>
           </div>
         </form>

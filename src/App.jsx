@@ -9,6 +9,7 @@ import Members from './pages/Members';
 import Payments from './pages/Payments';
 import Attendance from './pages/Attendance.jsx';
 import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 import './styles/globals.css';
 
 // Main App Content
@@ -79,6 +80,8 @@ const AppContent = () => {
         return <Attendance />;
       case 'reports':
         return <Reports initialTab={pageProps} />;
+      case 'settings':
+        return <Settings />;
       default:
         return (
           <div className="card text-center">
