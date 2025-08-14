@@ -29,10 +29,18 @@ const Attendance = () => {
     loadMembers();
     loadAttendance();
     loadStats();
+    
+    // Set up auto check-out interval
+    const autoCheckOutInterval = setInterval(() => {
+      handleAutoCheckOut();
+    }, 60000); // Check every minute
+
+    return () => clearInterval(autoCheckOutInterval);
   }, []);
 
   useEffect(() => {
     loadAttendance();
+    loadStats(); // Also reload stats when filters change
   }, [filters]);
 
   const loadMembers = async () => {
@@ -62,9 +70,22 @@ const Attendance = () => {
       const todayResult = await window.api.attendance.today();
       const statsResult = await window.api.dashboard.stats();
       
+      // Get monthly records by calling API with monthly filter
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      
+      const monthlyFilter = {
+        dateFrom: firstDayOfMonth.toISOString().split('T')[0],
+        dateTo: lastDayOfMonth.toISOString().split('T')[0]
+      };
+      
+      const monthlyResult = await window.api.attendance.list(monthlyFilter);
+      const monthlyRecords = monthlyResult.success ? monthlyResult.data.length : 0;
+      
       if (todayResult.success && statsResult.success) {
         setStats({
-          totalRecords: attendanceRecords.length,
+          totalRecords: monthlyRecords,
           todayAttendance: todayResult.data.length,
           activeMembers: statsResult.data.activeMembers,
           avgDailyAttendance: Math.round(statsResult.data.todayAttendance || 0)
@@ -135,6 +156,36 @@ const Attendance = () => {
     }
   };
 
+  const handleAutoCheckOut = async () => {
+    try {
+      // Auto check-out after specified hours (will be configurable from Settings page)
+      const autoCheckOutHours = 12; // Default value, can be fetched from settings
+      const cutoffTime = new Date();
+      cutoffTime.setHours(cutoffTime.getHours() - autoCheckOutHours);
+      
+      // Get active attendance records that are older than cutoff time
+      const activeRecords = attendanceRecords.filter(record => 
+        !record.check_out && 
+        new Date(record.check_in) < cutoffTime
+      );
+
+      // Auto check-out these records
+      for (const record of activeRecords) {
+        await window.api.attendance.checkout({ 
+          memberId: record.member_id,
+          autoCheckOut: true 
+        });
+      }
+
+      if (activeRecords.length > 0) {
+        loadAttendance();
+        loadStats();
+      }
+    } catch (error) {
+      console.error('Auto check-out failed:', error);
+    }
+  };
+
   const formatDateTime = (dateString) => {
     if (!dateString) return '-';
     try {
@@ -147,9 +198,7 @@ const Attendance = () => {
   const getSourceColor = (source) => {
     const colors = {
       manual: '#6b7280',
-      biometric: '#10b981',
-      card: '#3b82f6',
-      qr: '#8b5cf6'
+      biometric: '#10b981'
     };
     return colors[source] || '#6b7280';
   };
@@ -182,8 +231,8 @@ const Attendance = () => {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-value">{stats.totalRecords}</div>
-          <div className="stat-label">Total Records</div>
-          <div className="stat-sublabel">All time</div>
+          <div className="stat-label">Monthly Record</div>
+          <div className="stat-sublabel">Current month</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">{stats.todayAttendance}</div>
@@ -291,8 +340,6 @@ const Attendance = () => {
               <option value="">All Sources</option>
               <option value="manual">Manual</option>
               <option value="biometric">Biometric</option>
-              <option value="card">Card</option>
-              <option value="qr">QR Code</option>
             </select>
           </div>
         </div>
@@ -471,8 +518,6 @@ const Attendance = () => {
                 >
                   <option value="manual">Manual Entry</option>
                   <option value="biometric">Biometric Scan</option>
-                  <option value="card">ID Card</option>
-                  <option value="qr">QR Code</option>
                 </select>
               </div>
             </div>

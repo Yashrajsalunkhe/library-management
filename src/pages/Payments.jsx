@@ -15,7 +15,8 @@ const Payments = () => {
     dateTo: '',
     mode: '',
     search: '',
-    planId: ''
+    planId: '',
+    period: '' // Added for monthly filter
   });
 
   const [newPayment, setNewPayment] = useState({
@@ -23,15 +24,14 @@ const Payments = () => {
     amount: '',
     mode: 'cash',
     note: '',
-    receiptNumber: ''
+    receiptNumber: '',
+    planId: '' // Added plan selection
   });
 
-  // Payment modes
+  // Payment modes - Updated to only Cash and Online
   const paymentModes = [
     { value: 'cash', label: 'Cash' },
-    { value: 'card', label: 'Card' },
-    { value: 'upi', label: 'UPI' },
-    { value: 'bank_transfer', label: 'Bank Transfer' }
+    { value: 'online', label: 'Online' }
   ];
 
   // Load initial data
@@ -84,11 +84,20 @@ const Payments = () => {
     }
   };
 
+  const handlePlanSelection = (planId) => {
+    const selectedPlan = membershipPlans.find(plan => plan.id === parseInt(planId));
+    setNewPayment(prev => ({
+      ...prev,
+      planId: planId,
+      amount: selectedPlan ? selectedPlan.price.toString() : ''
+    }));
+  };
+
   const handleAddPayment = async (e) => {
     e.preventDefault();
     
-    if (!newPayment.memberId || !newPayment.amount) {
-      showNotification('Please fill in all required fields', 'error');
+    if (!newPayment.memberId || !newPayment.planId) {
+      showNotification('Please select both member and membership plan', 'error');
       return;
     }
 
@@ -106,7 +115,8 @@ const Payments = () => {
           amount: '',
           mode: 'cash',
           note: '',
-          receiptNumber: ''
+          receiptNumber: '',
+          planId: ''
         });
         loadPayments();
       } else {
@@ -146,7 +156,8 @@ const Payments = () => {
       dateTo: '',
       mode: '',
       search: '',
-      planId: ''
+      planId: '',
+      period: ''
     });
   };
 
@@ -170,9 +181,7 @@ const Payments = () => {
   const getPaymentModeColor = (mode) => {
     const colors = {
       cash: '#10b981',
-      card: '#3b82f6',
-      upi: '#8b5cf6',
-      bank_transfer: '#f59e0b'
+      online: '#3b82f6'
     };
     return colors[mode] || '#6b7280';
   };
@@ -230,7 +239,7 @@ const Payments = () => {
           <div className="stat-value">
             {payments.filter(p => p.mode !== 'cash').length}
           </div>
-          <div className="stat-label">Digital Payments</div>
+          <div className="stat-label">Online Payments</div>
           <div className="stat-subtitle">
             {formatCurrency(payments.filter(p => p.mode !== 'cash').reduce((sum, p) => sum + p.amount, 0))}
           </div>
@@ -264,6 +273,18 @@ const Payments = () => {
 
         {/* Filter Grid */}
         <div className="form-grid">
+          <div className="form-group">
+            <label htmlFor="period-filter">Period</label>
+            <select
+              id="period-filter"
+              value={filters.period}
+              onChange={(e) => handleFilterChange('period', e.target.value)}
+              className="form-control"
+            >
+              <option value="">All Time</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
           <div className="form-group">
             <label htmlFor="member-filter">Member</label>
             <select
@@ -337,7 +358,10 @@ const Payments = () => {
           <button onClick={clearFilters} className="button button-secondary">
             Clear All Filters
           </button>
-          {(filters.search || filters.memberId || filters.dateFrom || filters.dateTo || filters.mode) && (
+          <button onClick={loadPayments} className="button button-primary">
+            Apply Filter
+          </button>
+          {(filters.search || filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.period) && (
             <span className="filter-indicator">
               {Object.values(filters).filter(Boolean).length} filter(s) active
             </span>
@@ -351,7 +375,7 @@ const Payments = () => {
           <h3>Payment History</h3>
           <div className="card-subtitle">
             Showing {payments.length} payment{payments.length !== 1 ? 's' : ''}
-            {filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.search ? ' (filtered)' : ''}
+            {filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.search || filters.period ? ' (filtered)' : ''}
           </div>
         </div>
 
@@ -365,11 +389,11 @@ const Payments = () => {
             <div className="empty-icon">💰</div>
             <h3>No payments found</h3>
             <p>
-              {filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.search
+              {filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.search || filters.period
                 ? 'No payments match your current filters.'
                 : 'No payments have been recorded yet.'}
             </p>
-            {(filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.search) && (
+            {(filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.search || filters.period) && (
               <button onClick={clearFilters} className="button button-secondary mt-3">
                 Clear Filters
               </button>
@@ -472,9 +496,27 @@ const Payments = () => {
                 </div>
 
                 <div className="form-section">
-                  <div className="form-grid form-grid-2">
+                  <div className="form-grid form-grid-3">
                     <div className="form-group">
-                      <label htmlFor="payment-amount">Amount *</label>
+                      <label htmlFor="payment-plan">Membership Plan *</label>
+                      <select
+                        id="payment-plan"
+                        value={newPayment.planId}
+                        onChange={(e) => handlePlanSelection(e.target.value)}
+                        className="form-control"
+                        required
+                      >
+                        <option value="">Select Plan</option>
+                        {membershipPlans.map(plan => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.name} - ₹{plan.price}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="payment-amount">Amount</label>
                       <div className="input-group">
                         <span className="input-prefix">₹</span>
                         <input
@@ -483,10 +525,9 @@ const Payments = () => {
                           step="0.01"
                           min="0"
                           value={newPayment.amount}
-                          onChange={(e) => setNewPayment(prev => ({ ...prev, amount: e.target.value }))}
                           className="form-control"
-                          placeholder="0.00"
-                          required
+                          placeholder="Auto-filled"
+                          readOnly
                         />
                       </div>
                     </div>

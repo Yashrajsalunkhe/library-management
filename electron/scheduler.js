@@ -8,6 +8,7 @@ class SchedulerService {
   constructor() {
     this.notifier = new NotificationService();
     this.isRunning = false;
+    this.tasks = []; // Store task references
   }
 
   start() {
@@ -20,7 +21,7 @@ class SchedulerService {
     this.isRunning = true;
 
     // Daily task at 9:00 AM - Send expiry reminders
-    cron.schedule('0 9 * * *', async () => {
+    const reminderTask = cron.schedule('0 9 * * *', async () => {
       console.log('Running daily expiry reminder task...');
       try {
         const results = await this.notifier.sendBulkExpiryReminders();
@@ -29,9 +30,10 @@ class SchedulerService {
         console.error('Error in daily reminder task:', error);
       }
     });
+    this.tasks.push(reminderTask);
 
     // Daily task at 2:00 AM - Database backup
-    cron.schedule('0 2 * * *', async () => {
+    const backupTask = cron.schedule('0 2 * * *', async () => {
       console.log('Running daily database backup...');
       try {
         await this.createDatabaseBackup();
@@ -39,9 +41,10 @@ class SchedulerService {
         console.error('Error in database backup task:', error);
       }
     });
+    this.tasks.push(backupTask);
 
     // Weekly task on Sunday at 1:00 AM - Cleanup old notifications
-    cron.schedule('0 1 * * 0', async () => {
+    const cleanupTask = cron.schedule('0 1 * * 0', async () => {
       console.log('Running weekly cleanup task...');
       try {
         await this.cleanupOldNotifications();
@@ -49,15 +52,17 @@ class SchedulerService {
         console.error('Error in cleanup task:', error);
       }
     });
+    this.tasks.push(cleanupTask);
 
     // Update member statuses every hour
-    cron.schedule('0 * * * *', async () => {
+    const statusTask = cron.schedule('0 * * * *', async () => {
       try {
         await this.updateMemberStatuses();
       } catch (error) {
         console.error('Error updating member statuses:', error);
       }
     });
+    this.tasks.push(statusTask);
 
     console.log('Scheduler service started successfully');
   }
@@ -68,7 +73,17 @@ class SchedulerService {
     }
 
     console.log('Stopping scheduler service...');
-    cron.destroy();
+    
+    // Stop all individual tasks
+    this.tasks.forEach(task => {
+      if (task && typeof task.stop === 'function') {
+        task.stop();
+      } else if (task && typeof task.destroy === 'function') {
+        task.destroy();
+      }
+    });
+    
+    this.tasks = [];
     this.isRunning = false;
     console.log('Scheduler service stopped');
   }

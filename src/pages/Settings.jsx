@@ -33,7 +33,8 @@ const Settings = () => {
       absentAfterHours: '2',
       allowManualEdit: true,
       notifyOnAbsence: false,
-      maxConsecutiveAbsences: '7'
+      maxConsecutiveAbsences: '7',
+      autoCheckOutHours: '12' // Auto check-out after hours
     },
     // Payment Settings
     payment: {
@@ -150,7 +151,8 @@ const Settings = () => {
           absentAfterHours: '2',
           allowManualEdit: true,
           notifyOnAbsence: false,
-          maxConsecutiveAbsences: '7'
+          maxConsecutiveAbsences: '7',
+          autoCheckOutHours: '12'
         },
         payment: {
           currency: 'INR',
@@ -487,6 +489,18 @@ const Settings = () => {
             min="1"
             max="30"
           />
+        </div>
+        <div className="form-group">
+          <label>Auto Check-out After (hours)</label>
+          <input
+            type="number"
+            value={settings.attendance.autoCheckOutHours}
+            onChange={(e) => handleSettingChange('attendance', 'autoCheckOutHours', e.target.value)}
+            className="form-control"
+            min="1"
+            max="24"
+          />
+          <small className="form-help">Members will be automatically checked out after this many hours</small>
         </div>
       </div>
     </div>
