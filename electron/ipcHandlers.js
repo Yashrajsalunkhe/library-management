@@ -59,6 +59,10 @@ module.exports = (ipcMain) => {
           seatNo = nextSeat.toString();
         }
         
+        // Handle case where no plan is assigned - use dummy dates that will be updated when plan is assigned
+        const joinDate = member.joinDate || '1900-01-01';
+        const endDate = member.endDate || '1900-01-01';
+        
         const info = run(`
           INSERT INTO members (name, email, phone, birth_date, city, address, seat_no, plan_id, join_date, end_date, qr_code)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -71,8 +75,8 @@ module.exports = (ipcMain) => {
           member.address,
           seatNo,
           member.planId,
-          member.joinDate,
-          member.endDate,
+          joinDate,
+          endDate,
           qrData
         ]);
 
@@ -231,18 +235,31 @@ module.exports = (ipcMain) => {
           throw new Error('Member or plan not found');
         }
 
-        // Calculate new end date
-        const currentEndDate = new Date(member.end_date);
-        const today = new Date();
-        const startDate = currentEndDate > today ? currentEndDate : today;
-        const newEndDate = addDays(startDate, plan.duration_days);
+        // Check if this is the first plan assignment (dummy date indicates no plan)
+        const isFirstPlan = !member.plan_id || member.join_date === '1900-01-01';
+        
+        let newEndDate;
+        let joinDate;
+        
+        if (isFirstPlan) {
+          // For first plan assignment, start from today
+          joinDate = format(new Date(), 'yyyy-MM-dd');
+          newEndDate = addDays(new Date(), plan.duration_days);
+        } else {
+          // For renewals, extend from current end date or today, whichever is later
+          const currentEndDate = new Date(member.end_date);
+          const today = new Date();
+          const startDate = currentEndDate > today ? currentEndDate : today;
+          newEndDate = addDays(startDate, plan.duration_days);
+          joinDate = member.join_date; // Keep existing join date
+        }
 
         // Update member
         run(`
           UPDATE members 
-          SET plan_id = ?, end_date = ?, status = 'active', updated_at = CURRENT_TIMESTAMP 
+          SET plan_id = ?, join_date = ?, end_date = ?, status = 'active', updated_at = CURRENT_TIMESTAMP 
           WHERE id = ?
-        `, [planId, format(newEndDate, 'yyyy-MM-dd'), memberId]);
+        `, [planId, joinDate, format(newEndDate, 'yyyy-MM-dd'), memberId]);
 
         // Add payment record
         const paymentInfo = run(`
@@ -253,13 +270,15 @@ module.exports = (ipcMain) => {
           plan.price,
           paymentDetails.mode,
           planId,
-          paymentDetails.note || 'Membership renewal',
+          paymentDetails.note || (isFirstPlan ? 'New membership plan' : 'Membership renewal'),
           `RCP-${Date.now()}`
         ]);
 
         return { 
           paymentId: paymentInfo.lastInsertRowid,
-          newEndDate: format(newEndDate, 'yyyy-MM-dd')
+          newEndDate: format(newEndDate, 'yyyy-MM-dd'),
+          joinDate: joinDate,
+          isFirstPlan: isFirstPlan
         };
       });
 

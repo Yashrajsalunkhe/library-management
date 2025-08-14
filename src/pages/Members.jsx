@@ -142,7 +142,12 @@ const Members = ({ initialAction = null }) => {
     }
   };
 
-  const getStatusBadge = (status, endDate) => {
+  const getStatusBadge = (status, endDate, planId = null) => {
+    // If no plan is assigned or dummy date, show "Not Active"
+    if (!planId || !endDate || endDate === '1900-01-01') {
+      return <span className="badge badge-secondary">Not Active</span>;
+    }
+    
     const isExpired = new Date(endDate) < new Date();
     
     if (status === 'suspended') {
@@ -152,9 +157,9 @@ const Members = ({ initialAction = null }) => {
     } else {
       const daysLeft = Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24));
       if (daysLeft <= 10) {
-        return <span className="badge badge-warning">Expiring Soon</span>;
+        return <span className="badge badge-warning">Expiring Soon ({daysLeft} days left)</span>;
       } else {
-        return <span className="badge badge-success">Active</span>;
+        return <span className="badge badge-success">Active ({daysLeft} days left)</span>;
       }
     }
   };
@@ -213,20 +218,49 @@ const Members = ({ initialAction = null }) => {
                   <td>
                     <span className="badge badge-info">#{member.seat_no || 'N/A'}</span>
                   </td>
-                  <td>{getStatusBadge(member.status, member.end_date)}</td>
+                  <td>{getStatusBadge(member.status, member.end_date, member.plan_id)}</td>
                   {showActions && (
                     <td>
                       <div className="flex gap-2">
                         {!isSuspended && member.status !== 'suspended' && (
-                          <button
-                            onClick={() => {
-                              setSelectedMember(member);
-                              setShowRenewModal(true);
-                            }}
-                            className="button button-success button-sm"
-                          >
-                            Renew
-                          </button>
+                          (() => {
+                            // Check if member has no plan
+                            if (!member.plan_id || member.end_date === '1900-01-01') {
+                              return (
+                                <button
+                                  onClick={() => {
+                                    setSelectedMember(member);
+                                    setShowRenewModal(true);
+                                  }}
+                                  className="button button-success button-sm"
+                                >
+                                  Add Plan
+                                </button>
+                              );
+                            }
+                            
+                            // Check if plan is expiring (within 10 days) or expired
+                            const endDate = new Date(member.end_date);
+                            const today = new Date();
+                            const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                            const isExpiredOrExpiring = daysLeft <= 10;
+                            
+                            if (isExpiredOrExpiring) {
+                              return (
+                                <button
+                                  onClick={() => {
+                                    setSelectedMember(member);
+                                    setShowRenewModal(true);
+                                  }}
+                                  className="button button-success button-sm"
+                                >
+                                  Renew
+                                </button>
+                              );
+                            }
+                            
+                            return null; // Don't show any button if plan is not expiring
+                          })()
                         )}
                         <button
                           onClick={() => handleDeleteMember(member.id)}
@@ -384,10 +418,7 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
     birthDate: '',
     city: '',
     address: '',
-    seatNo: '',
-    planId: '',
-    joinDate: new Date().toISOString().split('T')[0],
-    endDate: ''
+    seatNo: ''
   });
   const [nextSeatNumber, setNextSeatNumber] = useState('');
 
@@ -410,39 +441,18 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-
-    // Auto-calculate end date when plan changes
-    if (name === 'planId' && value) {
-      const selectedPlan = plans.find(p => p.id === parseInt(value));
-      if (selectedPlan) {
-        const joinDate = new Date(formData.joinDate);
-        const endDate = new Date(joinDate);
-        endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
-        setFormData(prev => ({ 
-          ...prev, 
-          endDate: endDate.toISOString().split('T')[0] 
-        }));
-      }
-    }
-
-    // Auto-calculate end date when join date changes
-    if (name === 'joinDate' && value && formData.planId) {
-      const selectedPlan = plans.find(p => p.id === parseInt(formData.planId));
-      if (selectedPlan) {
-        const joinDate = new Date(value);
-        const endDate = new Date(joinDate);
-        endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
-        setFormData(prev => ({ 
-          ...prev, 
-          endDate: endDate.toISOString().split('T')[0] 
-        }));
-      }
-    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    // Add default values for plan-related fields when no plan is assigned
+    const memberDataWithDefaults = {
+      ...formData,
+      planId: null,
+      joinDate: null,
+      endDate: null
+    };
+    onSubmit(memberDataWithDefaults);
   };
 
   return (
@@ -531,53 +541,6 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
             </div>
 
             <div className="form-section">
-              <h4>Membership Details</h4>
-              <div className="form-grid form-grid-2">
-                <div className="form-group">
-                  <label className="form-label required">Membership Plan *</label>
-                  <select
-                    name="planId"
-                    className="form-control"
-                    value={formData.planId}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select a plan</option>
-                    {plans.map(plan => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name} - ₹{plan.price} ({plan.duration_days} days)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label required">Join Date *</label>
-                  <input
-                    type="date"
-                    name="joinDate"
-                    className="form-control"
-                    value={formData.joinDate}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label required">End Date *</label>
-                  <input
-                    type="date"
-                    name="endDate"
-                    className="form-control"
-                    value={formData.endDate}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="form-section">
               <div className="form-group">
                 <label className="form-label">Address</label>
                 <textarea
@@ -613,7 +576,7 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
     planId: member.plan_id || '',
     paymentDetails: {
       mode: 'cash',
-      note: 'Membership renewal'
+      note: member.plan_id ? 'Membership renewal' : 'New membership plan'
     }
   });
 
@@ -623,20 +586,31 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
   };
 
   const selectedPlan = plans.find(p => p.id === parseInt(formData.planId));
+  const isNewPlan = !member.plan_id;
 
   return (
     <div className="modal-overlay">
       <div className="modal">
         <div className="modal-header">
-          <h3 className="modal-title">Renew Membership - {member.name}</h3>
+          <h3 className="modal-title">
+            {isNewPlan ? `Add Plan - ${member.name}` : `Renew Membership - ${member.name}`}
+          </h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem' }}>×</button>
         </div>
         
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
-            <div className="alert alert-info mb-4">
-              Current membership expires on: <strong>{member.end_date}</strong>
-            </div>
+            {!isNewPlan && (
+              <div className="alert alert-info mb-4">
+                Current membership expires on: <strong>{member.end_date}</strong>
+              </div>
+            )}
+            
+            {isNewPlan && (
+              <div className="alert alert-warning mb-4">
+                This member currently has no active plan. Select a plan to activate their membership.
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Select Plan *</label>
@@ -700,7 +674,7 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
               Cancel
             </button>
             <button type="submit" className="button button-success" disabled={!selectedPlan}>
-              Renew Membership
+              {isNewPlan ? 'Add Plan' : 'Renew Membership'}
             </button>
           </div>
         </form>
@@ -779,18 +753,25 @@ const MemberDetailsModal = ({ member, onEdit, onClose }) => {
                 <span className="detail-label">Plan Price:</span>
                 <span className="detail-value">₹{member.plan_price || 0}</span>
               </div>
-              <div className="details-row">
-                <span className="detail-label">Join Date:</span>
-                <span className="detail-value">{new Date(member.join_date).toLocaleDateString()}</span>
-              </div>
-              <div className="details-row">
-                <span className="detail-label">End Date:</span>
-                <span className="detail-value">{new Date(member.end_date).toLocaleDateString()}</span>
-              </div>
+              {member.plan_id && member.join_date && member.join_date !== '1900-01-01' && (
+                <>
+                  <div className="details-row">
+                    <span className="detail-label">Join Date:</span>
+                    <span className="detail-value">{new Date(member.join_date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="details-row">
+                    <span className="detail-label">End Date:</span>
+                    <span className="detail-value">{new Date(member.end_date).toLocaleDateString()}</span>
+                  </div>
+                </>
+              )}
               <div className="details-row">
                 <span className="detail-label">Status:</span>
                 <span className="detail-value">
                   {(() => {
+                    if (!member.plan_id || !member.end_date || member.end_date === '1900-01-01') {
+                      return <span className="badge badge-secondary">Not Active</span>;
+                    }
                     const isExpired = new Date(member.end_date) < new Date();
                     if (member.status === 'suspended') {
                       return <span className="badge badge-danger">Suspended</span>;
