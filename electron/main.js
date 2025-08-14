@@ -58,9 +58,9 @@ const createWindow = async () => {
 
   // Load the app
   if (isDev) {
-    console.log('Loading from development server: http://localhost:5173');
+    console.log('Loading from development server: http://localhost:5173/');
     try {
-      await mainWindow.loadURL('http://localhost:5173');
+      await mainWindow.loadURL('http://localhost:5173/');
       console.log('Successfully loaded from development server');
     } catch (error) {
       console.error('Failed to load from development server:', error);

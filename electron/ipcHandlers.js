@@ -42,24 +42,63 @@ module.exports = (ipcMain) => {
         // Generate QR code data
         const qrData = `LMS-${Date.now()}`;
         
+        // Auto-assign seat number if not provided
+        let seatNo = member.seatNo;
+        if (!seatNo) {
+          // Find next available seat number
+          const existingSeats = query('SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)');
+          const seatNumbers = existingSeats.map(s => parseInt(s.seat_no)).filter(n => !isNaN(n));
+          
+          let nextSeat = 1;
+          for (let i = 0; i < seatNumbers.length; i++) {
+            if (seatNumbers[i] !== nextSeat) {
+              break;
+            }
+            nextSeat++;
+          }
+          seatNo = nextSeat.toString();
+        }
+        
         const info = run(`
-          INSERT INTO members (name, email, phone, address, plan_id, join_date, end_date, qr_code)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO members (name, email, phone, birth_date, city, address, seat_no, plan_id, join_date, end_date, qr_code)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           member.name,
           member.email,
           member.phone,
+          member.birthDate,
+          member.city,
           member.address,
+          seatNo,
           member.planId,
           member.joinDate,
           member.endDate,
           qrData
         ]);
 
-        return { id: info.lastInsertRowid, qrCode: qrData };
+        return { id: info.lastInsertRowid, qrCode: qrData, seatNo };
       });
 
       return { success: true, data: result };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('member:getNextSeatNumber', async (event) => {
+    try {
+      const existingSeats = query('SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)');
+      const seatNumbers = existingSeats.map(s => parseInt(s.seat_no)).filter(n => !isNaN(n));
+      
+      let nextSeat = 1;
+      for (let i = 0; i < seatNumbers.length; i++) {
+        if (seatNumbers[i] !== nextSeat) {
+          break;
+        }
+        nextSeat++;
+      }
+      
+      return { success: true, data: nextSeat.toString() };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -135,8 +174,47 @@ module.exports = (ipcMain) => {
 
   ipcMain.handle('member:delete', async (event, id) => {
     try {
-      run('UPDATE members SET status = ? WHERE id = ?', ['suspended', id]);
-      return { success: true };
+      // Get current member status
+      const member = get('SELECT status FROM members WHERE id = ?', [id]);
+      if (!member) {
+        return { success: false, message: 'Member not found' };
+      }
+      
+      // Toggle status between suspended and active
+      const newStatus = member.status === 'suspended' ? 'active' : 'suspended';
+      run('UPDATE members SET status = ? WHERE id = ?', [newStatus, id]);
+      
+      return { success: true, message: `Member ${newStatus === 'suspended' ? 'suspended' : 'activated'} successfully` };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('member:permanentDelete', async (event, id) => {
+    try {
+      // Get member details before deletion
+      const member = get('SELECT * FROM members WHERE id = ?', [id]);
+      if (!member) {
+        return { success: false, message: 'Member not found' };
+      }
+      
+      // Only allow permanent deletion of suspended members
+      if (member.status !== 'suspended') {
+        return { success: false, message: 'Only suspended members can be permanently deleted' };
+      }
+      
+      const result = transaction(() => {
+        // Delete related records first (to maintain referential integrity)
+        run('DELETE FROM payments WHERE member_id = ?', [id]);
+        run('DELETE FROM attendance WHERE member_id = ?', [id]);
+        
+        // Delete the member
+        run('DELETE FROM members WHERE id = ?', [id]);
+        
+        return { success: true, message: 'Member permanently deleted successfully' };
+      });
+      
+      return result;
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -256,6 +334,17 @@ module.exports = (ipcMain) => {
         params.push(filters.memberId);
       }
 
+      if (filters.search) {
+        sql += ' AND (m.name LIKE ? OR m.email LIKE ? OR m.phone LIKE ? OR p.receipt_number LIKE ?)';
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      }
+
+      if (filters.mode) {
+        sql += ' AND p.mode = ?';
+        params.push(filters.mode);
+      }
+
       if (filters.dateFrom) {
         sql += ' AND DATE(p.paid_at) >= ?';
         params.push(filters.dateFrom);
@@ -264,6 +353,11 @@ module.exports = (ipcMain) => {
       if (filters.dateTo) {
         sql += ' AND DATE(p.paid_at) <= ?';
         params.push(filters.dateTo);
+      }
+
+      if (filters.planId) {
+        sql += ' AND p.plan_id = ?';
+        params.push(parseInt(filters.planId));
       }
 
       sql += ' ORDER BY p.paid_at DESC';
@@ -342,15 +436,58 @@ module.exports = (ipcMain) => {
         params.push(filters.memberId);
       }
 
-      if (filters.dateFrom && filters.dateTo) {
-        sql += ' AND DATE(a.check_in) BETWEEN ? AND ?';
-        params.push(filters.dateFrom, filters.dateTo);
+      if (filters.source) {
+        sql += ' AND a.source = ?';
+        params.push(filters.source);
+      }
+
+      if (filters.dateFrom) {
+        sql += ' AND DATE(a.check_in) >= ?';
+        params.push(filters.dateFrom);
+      }
+
+      if (filters.dateTo) {
+        sql += ' AND DATE(a.check_in) <= ?';
+        params.push(filters.dateTo);
       }
 
       sql += ' ORDER BY a.check_in DESC';
 
       const attendance = query(sql, params);
       return { success: true, data: attendance };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('attendance:add', async (event, attendanceData) => {
+    try {
+      const { memberId, checkIn, checkOut, source = 'manual' } = attendanceData;
+      
+      if (!memberId) {
+        return { success: false, message: 'Member ID is required' };
+      }
+
+      let sql = `INSERT INTO attendance (member_id, source`;
+      let params = [memberId, source];
+      let values = `?, ?`;
+
+      if (checkIn) {
+        sql += `, check_in`;
+        values += `, ?`;
+        params.push(checkIn);
+      }
+
+      if (checkOut) {
+        sql += `, check_out`;
+        values += `, ?`;
+        params.push(checkOut);
+      }
+
+      sql += `) VALUES (${values})`;
+
+      const info = run(sql, params);
+      return { success: true, data: { id: info.lastInsertRowid } };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -405,45 +542,72 @@ module.exports = (ipcMain) => {
   
   ipcMain.handle('report:attendance', async (event, { dateFrom, dateTo }) => {
     try {
+      console.log('Fetching attendance report from', dateFrom, 'to', dateTo);
+      
       const attendance = query(`
         SELECT 
+          a.id,
+          a.member_id,
           m.name as member_name,
           m.phone,
-          COUNT(a.id) as visit_count,
-          MIN(a.check_in) as first_visit,
-          MAX(a.check_in) as last_visit
-        FROM members m
-        LEFT JOIN attendance a ON m.id = a.member_id 
-          AND DATE(a.check_in) BETWEEN ? AND ?
-        WHERE m.status = ?
-        GROUP BY m.id, m.name, m.phone
-        ORDER BY visit_count DESC, m.name
-      `, [dateFrom, dateTo, 'active']);
+          DATE(a.check_in) as date,
+          a.check_in as original_check_in,
+          a.check_out as original_check_out,
+          TIME(a.check_in) as check_in,
+          TIME(a.check_out) as check_out,
+          CASE 
+            WHEN a.check_out IS NOT NULL THEN 'Completed'
+            ELSE 'In Progress'
+          END as status,
+          CASE 
+            WHEN a.check_out IS NOT NULL THEN 
+              printf('%d hours %d mins', 
+                (strftime('%s', a.check_out) - strftime('%s', a.check_in)) / 3600,
+                ((strftime('%s', a.check_out) - strftime('%s', a.check_in)) % 3600) / 60
+              )
+            ELSE NULL
+          END as duration
+        FROM attendance a
+        JOIN members m ON a.member_id = m.id
+        WHERE DATE(a.check_in) BETWEEN ? AND ?
+        ORDER BY a.check_in DESC
+      `, [dateFrom, dateTo]);
 
+      console.log('Found', attendance.length, 'attendance records');
       return { success: true, data: attendance };
     } catch (error) {
+      console.error('Error fetching attendance report:', error);
       return { success: false, message: error.message };
     }
   });
 
   ipcMain.handle('report:payments', async (event, { dateFrom, dateTo }) => {
     try {
+      console.log('Fetching payments report from', dateFrom, 'to', dateTo);
+      
       const payments = query(`
         SELECT 
-          DATE(p.paid_at) as payment_date,
-          COUNT(p.id) as transaction_count,
-          SUM(p.amount) as total_amount,
-          p.mode,
-          GROUP_CONCAT(m.name) as members
+          p.id,
+          p.member_id,
+          p.amount,
+          p.mode as payment_method,
+          p.note,
+          p.receipt_number,
+          p.paid_at as payment_date,
+          m.name as member_name,
+          mp.name as plan_name,
+          'Paid' as status
         FROM payments p
         JOIN members m ON p.member_id = m.id
+        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
         WHERE DATE(p.paid_at) BETWEEN ? AND ?
-        GROUP BY DATE(p.paid_at), p.mode
         ORDER BY p.paid_at DESC
       `, [dateFrom, dateTo]);
 
+      console.log('Found', payments.length, 'payment records');
       return { success: true, data: payments };
     } catch (error) {
+      console.error('Error fetching payments report:', error);
       return { success: false, message: error.message };
     }
   });
@@ -480,6 +644,331 @@ module.exports = (ipcMain) => {
 
       return { success: true };
     } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('report:export', async (event, { type, format, dateRange, data }) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const { shell } = require('electron');
+      
+      // Create exports directory if it doesn't exist
+      const exportsDir = path.join(__dirname, '..', 'exports');
+      if (!fs.existsSync(exportsDir)) {
+        fs.mkdirSync(exportsDir, { recursive: true });
+      }
+
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+      const filename = `${type}_report_${timestamp}.${format}`;
+      const filepath = path.join(exportsDir, filename);
+
+      if (format === 'xlsx') {
+        const ExcelJS = require('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(`${type.charAt(0).toUpperCase() + type.slice(1)} Report`);
+        
+        // Set workbook properties
+        workbook.creator = 'Library Management System';
+        workbook.created = new Date();
+        
+        switch (type) {
+          case 'attendance':
+            worksheet.columns = [
+              { header: 'Date', key: 'date', width: 12 },
+              { header: 'Member', key: 'member', width: 20 },
+              { header: 'Check In', key: 'checkin', width: 15 },
+              { header: 'Check Out', key: 'checkout', width: 15 },
+              { header: 'Duration (hours)', key: 'duration', width: 15 },
+              { header: 'Source', key: 'source', width: 12 }
+            ];
+            
+            data.forEach(record => {
+              const checkIn = record.check_in ? new Date(record.check_in) : null;
+              const checkOut = record.check_out ? new Date(record.check_out) : null;
+              const duration = checkIn && checkOut ? 
+                Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 100)) / 10 : null;
+              
+              worksheet.addRow({
+                date: checkIn ? checkIn.toISOString().slice(0, 10) : '',
+                member: record.member_name,
+                checkin: checkIn ? checkIn.toTimeString().slice(0, 8) : '',
+                checkout: checkOut ? checkOut.toTimeString().slice(0, 8) : 'Active',
+                duration: duration || '',
+                source: record.source.charAt(0).toUpperCase() + record.source.slice(1)
+              });
+            });
+            break;
+            
+          case 'payments':
+            worksheet.columns = [
+              { header: 'Date', key: 'date', width: 12 },
+              { header: 'Receipt #', key: 'receipt', width: 15 },
+              { header: 'Member', key: 'member', width: 20 },
+              { header: 'Amount (₹)', key: 'amount', width: 12 },
+              { header: 'Mode', key: 'mode', width: 12 },
+              { header: 'Plan', key: 'plan', width: 15 },
+              { header: 'Note', key: 'note', width: 25 }
+            ];
+            
+            data.forEach(payment => {
+              worksheet.addRow({
+                date: new Date(payment.paid_at).toISOString().slice(0, 10),
+                receipt: payment.receipt_number || '',
+                member: payment.member_name,
+                amount: payment.amount,
+                mode: payment.mode.charAt(0).toUpperCase() + payment.mode.slice(1),
+                plan: payment.plan_name || '',
+                note: payment.note || ''
+              });
+            });
+            break;
+            
+          case 'members':
+            worksheet.columns = [
+              { header: 'Name', key: 'name', width: 20 },
+              { header: 'Email', key: 'email', width: 25 },
+              { header: 'Phone', key: 'phone', width: 15 },
+              { header: 'Plan', key: 'plan', width: 15 },
+              { header: 'Join Date', key: 'joinDate', width: 12 },
+              { header: 'End Date', key: 'endDate', width: 12 },
+              { header: 'Status', key: 'status', width: 10 }
+            ];
+            
+            data.forEach(member => {
+              worksheet.addRow({
+                name: member.name,
+                email: member.email || '',
+                phone: member.phone || '',
+                plan: member.plan_name || '',
+                joinDate: new Date(member.join_date).toISOString().slice(0, 10),
+                endDate: new Date(member.end_date).toISOString().slice(0, 10),
+                status: member.status.charAt(0).toUpperCase() + member.status.slice(1)
+              });
+            });
+            break;
+        }
+        
+        // Style the header row
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE6F3FF' }
+        };
+        
+        // Add borders to all cells
+        worksheet.eachRow((row, rowNumber) => {
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+          });
+        });
+        
+        await workbook.xlsx.writeFile(filepath);
+        
+      } else if (format === 'csv') {
+        let csvContent = '';
+        
+        switch (type) {
+          case 'attendance':
+            csvContent = 'Date,Member,Check In,Check Out,Duration,Source\n';
+            data.forEach(record => {
+              const checkIn = record.check_in ? new Date(record.check_in) : null;
+              const checkOut = record.check_out ? new Date(record.check_out) : null;
+              const duration = checkIn && checkOut ? 
+                Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 100)) / 10 : '';
+              
+              csvContent += `"${checkIn ? checkIn.toISOString().slice(0, 10) : ''}","${record.member_name}","${checkIn ? checkIn.toTimeString().slice(0, 8) : ''}","${checkOut ? checkOut.toTimeString().slice(0, 8) : 'Active'}","${duration ? duration + 'h' : ''}","${record.source}"\n`;
+            });
+            break;
+            
+          case 'payments':
+            csvContent = 'Date,Receipt #,Member,Amount,Mode,Plan,Note\n';
+            data.forEach(payment => {
+              csvContent += `"${new Date(payment.paid_at).toISOString().slice(0, 10)}","${payment.receipt_number || ''}","${payment.member_name}","${payment.amount}","${payment.mode}","${payment.plan_name || ''}","${payment.note || ''}"\n`;
+            });
+            break;
+            
+          case 'members':
+            csvContent = 'Name,Email,Phone,Plan,Join Date,End Date,Status\n';
+            data.forEach(member => {
+              csvContent += `"${member.name}","${member.email || ''}","${member.phone || ''}","${member.plan_name || ''}","${new Date(member.join_date).toISOString().slice(0, 10)}","${new Date(member.end_date).toISOString().slice(0, 10)}","${member.status}"\n`;
+            });
+            break;
+        }
+        
+        fs.writeFileSync(filepath, csvContent, 'utf8');
+      }
+
+      // Open the exports folder
+      shell.showItemInFolder(filepath);
+      
+      return { success: true, message: `Report exported to ${filename}`, filepath };
+    } catch (error) {
+      console.error('Export error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // SETTINGS MANAGEMENT
+  // ===================
+  
+  ipcMain.handle('settings:getSettings', async (event) => {
+    try {
+      const settings = query('SELECT * FROM settings');
+      const settingsObj = {};
+      
+      settings.forEach(setting => {
+        const [category, key] = setting.key.split('.');
+        if (!settingsObj[category]) {
+          settingsObj[category] = {};
+        }
+        
+        // Parse JSON values or use string values
+        try {
+          settingsObj[category][key] = JSON.parse(setting.value);
+        } catch {
+          settingsObj[category][key] = setting.value;
+        }
+      });
+      
+      return { success: true, settings: settingsObj };
+    } catch (error) {
+      console.error('Get settings error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('settings:saveSettings', async (event, settings) => {
+    try {
+      transaction(() => {
+        // Clear existing settings
+        run('DELETE FROM settings');
+        
+        // Insert new settings
+        Object.keys(settings).forEach(category => {
+          Object.keys(settings[category]).forEach(key => {
+            const settingKey = `${category}.${key}`;
+            const value = typeof settings[category][key] === 'object' 
+              ? JSON.stringify(settings[category][key])
+              : settings[category][key].toString();
+            
+            run('INSERT INTO settings (key, value) VALUES (?, ?)', [settingKey, value]);
+          });
+        });
+      });
+      
+      return { success: true, message: 'Settings saved successfully' };
+    } catch (error) {
+      console.error('Save settings error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // BACKUP MANAGEMENT
+  // ===================
+  
+  ipcMain.handle('backup:createBackup', async (event) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const { shell } = require('electron');
+      
+      const backupDir = path.join(__dirname, '..', 'backups');
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const backupFile = path.join(backupDir, `library-backup-${timestamp}.db`);
+      const dbFile = path.join(__dirname, 'library.db');
+      
+      // Copy database file
+      fs.copyFileSync(dbFile, backupFile);
+      
+      return { success: true, message: 'Backup created successfully', filepath: backupFile };
+    } catch (error) {
+      console.error('Backup error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('backup:restoreBackup', async (event) => {
+    try {
+      const { dialog } = require('electron');
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Show file dialog to select backup file
+      const result = await dialog.showOpenDialog({
+        title: 'Select Backup File',
+        defaultPath: path.join(__dirname, '..', 'backups'),
+        filters: [{ name: 'Database Files', extensions: ['db'] }],
+        properties: ['openFile']
+      });
+      
+      if (!result.canceled && result.filePaths.length > 0) {
+        const backupFile = result.filePaths[0];
+        const dbFile = path.join(__dirname, 'library.db');
+        
+        // Copy backup file to database location
+        fs.copyFileSync(backupFile, dbFile);
+        
+        return { success: true, message: 'Backup restored successfully' };
+      }
+      
+      return { success: false, message: 'No backup file selected' };
+    } catch (error) {
+      console.error('Restore backup error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // DATA EXPORT
+  // ===================
+  
+  ipcMain.handle('data:exportData', async (event) => {
+    try {
+      const { dialog, shell } = require('electron');
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Show save dialog
+      const result = await dialog.showSaveDialog({
+        title: 'Export Data',
+        defaultPath: 'library-data-export.json',
+        filters: [{ name: 'JSON Files', extensions: ['json'] }]
+      });
+      
+      if (!result.canceled) {
+        // Export all data
+        const exportData = {
+          members: query('SELECT * FROM members'),
+          plans: query('SELECT * FROM plans'),
+          payments: query('SELECT * FROM payments'),
+          attendance: query('SELECT * FROM attendance'),
+          settings: query('SELECT * FROM settings'),
+          exportDate: new Date().toISOString()
+        };
+        
+        fs.writeFileSync(result.filePath, JSON.stringify(exportData, null, 2));
+        shell.showItemInFolder(result.filePath);
+        
+        return { success: true, message: 'Data exported successfully' };
+      }
+      
+      return { success: false, message: 'Export cancelled' };
+    } catch (error) {
+      console.error('Export data error:', error);
       return { success: false, message: error.message };
     }
   });

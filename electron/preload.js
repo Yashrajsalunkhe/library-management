@@ -15,7 +15,9 @@ contextBridge.exposeInMainWorld('api', {
     get: (id) => ipcRenderer.invoke('member:get', id),
     update: (member) => ipcRenderer.invoke('member:update', member),
     delete: (id) => ipcRenderer.invoke('member:delete', id),
-    renew: (renewal) => ipcRenderer.invoke('member:renew', renewal)
+    permanentDelete: (id) => ipcRenderer.invoke('member:permanentDelete', id),
+    renew: (renewal) => ipcRenderer.invoke('member:renew', renewal),
+    getNextSeatNumber: () => ipcRenderer.invoke('member:getNextSeatNumber')
   },
 
   // Membership Plans
@@ -35,7 +37,8 @@ contextBridge.exposeInMainWorld('api', {
     checkin: (data) => ipcRenderer.invoke('attendance:checkin', data),
     checkout: (data) => ipcRenderer.invoke('attendance:checkout', data),
     list: (filters) => ipcRenderer.invoke('attendance:list', filters),
-    today: () => ipcRenderer.invoke('attendance:today')
+    today: () => ipcRenderer.invoke('attendance:today'),
+    add: (attendance) => ipcRenderer.invoke('attendance:add', attendance)
   },
 
   // Dashboard
@@ -47,6 +50,7 @@ contextBridge.exposeInMainWorld('api', {
   report: {
     attendance: (filters) => ipcRenderer.invoke('report:attendance', filters),
     payments: (filters) => ipcRenderer.invoke('report:payments', filters),
+    export: (options) => ipcRenderer.invoke('report:export', options),
     exportAttendance: (options) => ipcRenderer.invoke('report:export-attendance', options),
     exportPayments: (options) => ipcRenderer.invoke('report:export-payments', options),
     exportMembers: (options) => ipcRenderer.invoke('report:export-members', options),
@@ -83,8 +87,19 @@ contextBridge.exposeInMainWorld('api', {
 
   // Settings
   settings: {
-    get: () => ipcRenderer.invoke('settings:get'),
-    update: (settings) => ipcRenderer.invoke('settings:update', settings)
+    getSettings: () => ipcRenderer.invoke('settings:getSettings'),
+    saveSettings: (settings) => ipcRenderer.invoke('settings:saveSettings', settings)
+  },
+
+  // Backup
+  backup: {
+    createBackup: () => ipcRenderer.invoke('backup:createBackup'),
+    restoreBackup: () => ipcRenderer.invoke('backup:restoreBackup')
+  },
+
+  // Data
+  data: {
+    exportData: () => ipcRenderer.invoke('data:exportData')
   },
 
   // File operations
