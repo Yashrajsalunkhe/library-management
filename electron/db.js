@@ -62,7 +62,7 @@ const createTables = () => {
       receipt_number TEXT,
       paid_at TEXT DEFAULT CURRENT_TIMESTAMP,
       created_by INTEGER,
-      FOREIGN KEY (member_id) REFERENCES members (id),
+      FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE,
       FOREIGN KEY (plan_id) REFERENCES membership_plans (id),
       FOREIGN KEY (created_by) REFERENCES users (id)
     )
@@ -77,7 +77,7 @@ const createTables = () => {
       check_out TEXT,
       source TEXT DEFAULT 'manual' CHECK(source IN ('biometric', 'manual', 'card', 'qr')),
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (member_id) REFERENCES members (id)
+      FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
     )
   `).run();
 
@@ -108,7 +108,7 @@ const createTables = () => {
       sent_at TEXT,
       error_message TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (member_id) REFERENCES members (id)
+      FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
     )
   `).run();
 

@@ -208,7 +208,9 @@ module.exports = (ipcMain) => {
       }
       
       const result = transaction(() => {
-        // Delete related records first (to maintain referential integrity)
+        // With CASCADE DELETE enabled, related records will be automatically deleted
+        // But we'll keep manual deletion for safety and explicit control
+        run('DELETE FROM notifications WHERE member_id = ?', [id]);
         run('DELETE FROM payments WHERE member_id = ?', [id]);
         run('DELETE FROM attendance WHERE member_id = ?', [id]);
         
