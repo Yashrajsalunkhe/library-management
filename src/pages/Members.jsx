@@ -7,6 +7,8 @@ const Members = ({ initialAction = null }) => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
@@ -67,6 +69,22 @@ const Members = ({ initialAction = null }) => {
     }
   };
 
+  const handleEditMember = async (memberData) => {
+    try {
+      const result = await window.api.member.update(memberData);
+      if (result.success) {
+        success('Member updated successfully');
+        setShowEditModal(false);
+        setSelectedMember(null);
+        loadMembers();
+      } else {
+        error(result.message || 'Failed to update member');
+      }
+    } catch (err) {
+      error('Failed to update member');
+    }
+  };
+
   const handleRenewMember = async (renewalData) => {
     try {
       const result = await window.api.member.renew(renewalData);
@@ -101,6 +119,25 @@ const Members = ({ initialAction = null }) => {
         }
       } catch (err) {
         error(`Failed to ${action} member`);
+      }
+    }
+  };
+
+  const handlePermanentDelete = async (memberId) => {
+    const member = members.find(m => m.id === memberId);
+    const confirmMessage = `Are you sure you want to permanently delete ${member.name}? This action cannot be undone.`;
+    
+    if (confirm(confirmMessage)) {
+      try {
+        const result = await window.api.member.permanentDelete(memberId);
+        if (result.success) {
+          success('Member permanently deleted successfully');
+          loadMembers();
+        } else {
+          error(result.message || 'Failed to delete member');
+        }
+      } catch (err) {
+        error('Failed to delete member');
       }
     }
   };
@@ -147,7 +184,7 @@ const Members = ({ initialAction = null }) => {
     );
   }
 
-  const renderMembersTable = (membersList, title, showActions = true) => (
+  const renderMembersTable = (membersList, title, showActions = true, isSuspended = false) => (
     <div className="card mb-6">
       <div className="card-header">
         <h3 className="card-title">{title} ({membersList.length})</h3>
@@ -159,13 +196,7 @@ const Members = ({ initialAction = null }) => {
               <tr>
                 <th>ID</th>
                 <th>Name</th>
-                <th>Contact</th>
-                <th>Birth Date</th>
-                <th>City</th>
                 <th>Seat No</th>
-                <th>Plan</th>
-                <th>Join Date</th>
-                <th>End Date</th>
                 <th>Status</th>
                 {showActions && <th>Actions</th>}
               </tr>
@@ -177,39 +208,16 @@ const Members = ({ initialAction = null }) => {
                   <td>
                     <div>
                       <div className="font-medium">{member.name}</div>
-                      {member.qr_code && (
-                        <div className="text-sm text-gray-500">QR: {member.qr_code}</div>
-                      )}
                     </div>
                   </td>
-                  <td>
-                    <div style={{ fontSize: '0.85rem' }}>
-                      <div>{member.email || 'No email'}</div>
-                      <div>{member.phone || 'No phone'}</div>
-                    </div>
-                  </td>
-                  <td>
-                    {member.birth_date ? new Date(member.birth_date).toLocaleDateString() : 'N/A'}
-                  </td>
-                  <td>{member.city || 'N/A'}</td>
                   <td>
                     <span className="badge badge-info">#{member.seat_no || 'N/A'}</span>
                   </td>
-                  <td>
-                    <div>
-                      <div>{member.plan_name || 'No plan'}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>
-                        ₹{member.plan_price || 0}
-                      </div>
-                    </div>
-                  </td>
-                  <td>{new Date(member.join_date).toLocaleDateString()}</td>
-                  <td>{new Date(member.end_date).toLocaleDateString()}</td>
                   <td>{getStatusBadge(member.status, member.end_date)}</td>
                   {showActions && (
                     <td>
                       <div className="flex gap-2">
-                        {member.status !== 'suspended' && (
+                        {!isSuspended && member.status !== 'suspended' && (
                           <button
                             onClick={() => {
                               setSelectedMember(member);
@@ -225,6 +233,31 @@ const Members = ({ initialAction = null }) => {
                           className="button button-danger button-sm"
                         >
                           {member.status === 'suspended' ? 'Activate' : 'Suspend'}
+                        </button>
+                        {isSuspended && member.status === 'suspended' && (
+                          <button
+                            onClick={() => handlePermanentDelete(member.id)}
+                            className="button button-danger button-sm"
+                            style={{ backgroundColor: '#dc2626' }}
+                            title="Permanently delete this member"
+                          >
+                            Delete
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setSelectedMember(member);
+                            setShowDetailsModal(true);
+                          }}
+                          className="button button-secondary button-sm"
+                          title="More Details"
+                          style={{ 
+                            padding: '4px 8px',
+                            fontSize: '14px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          ⋯
                         </button>
                       </div>
                     </td>
@@ -277,7 +310,7 @@ const Members = ({ initialAction = null }) => {
       </div>
 
       {/* Active Members Section */}
-      {renderMembersTable(activeMembers, 'Active Members', true)}
+      {renderMembersTable(activeMembers, 'Active Members', true, false)}
 
       {/* Suspended Members Section */}
       {suspendedMembers.length > 0 && (
@@ -285,7 +318,7 @@ const Members = ({ initialAction = null }) => {
           <div className="alert alert-warning mb-4">
             <strong>⚠️ Suspended Members</strong> - These members have been suspended and cannot access library services.
           </div>
-          {renderMembersTable(suspendedMembers, 'Suspended Members', true)}
+          {renderMembersTable(suspendedMembers, 'Suspended Members', true, true)}
         </>
       )}
 
@@ -306,6 +339,34 @@ const Members = ({ initialAction = null }) => {
           onSubmit={handleRenewMember}
           onClose={() => {
             setShowRenewModal(false);
+            setSelectedMember(null);
+          }}
+        />
+      )}
+
+      {/* Member Details Modal */}
+      {showDetailsModal && selectedMember && (
+        <MemberDetailsModal
+          member={selectedMember}
+          onEdit={() => {
+            setShowDetailsModal(false);
+            setShowEditModal(true);
+          }}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedMember(null);
+          }}
+        />
+      )}
+
+      {/* Edit Member Modal */}
+      {showEditModal && selectedMember && (
+        <EditMemberModal
+          member={selectedMember}
+          plans={plans}
+          onSubmit={handleEditMember}
+          onClose={() => {
+            setShowEditModal(false);
             setSelectedMember(null);
           }}
         />
@@ -640,6 +701,334 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
             </button>
             <button type="submit" className="button button-success" disabled={!selectedPlan}>
               Renew Membership
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Member Details Modal Component
+const MemberDetailsModal = ({ member, onEdit, onClose }) => {
+  return (
+    <div className="modal-overlay">
+      <div className="modal member-details-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">👤 Member Details - {member.name}</h3>
+          <button onClick={onClose} className="modal-close" aria-label="Close modal">×</button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="member-details-grid">
+            {/* Personal Information Section */}
+            <div className="details-section">
+              <h4 className="section-title">Personal Information</h4>
+              <div className="details-row">
+                <span className="detail-label">Member ID:</span>
+                <span className="detail-value">#{member.id}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Name:</span>
+                <span className="detail-value">{member.name}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Email:</span>
+                <span className="detail-value">{member.email || 'Not provided'}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Phone:</span>
+                <span className="detail-value">{member.phone || 'Not provided'}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Birth Date:</span>
+                <span className="detail-value">
+                  {member.birth_date ? new Date(member.birth_date).toLocaleDateString() : 'Not provided'}
+                </span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">City:</span>
+                <span className="detail-value">{member.city || 'Not provided'}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Address:</span>
+                <span className="detail-value">{member.address || 'Not provided'}</span>
+              </div>
+              {member.qr_code && (
+                <div className="details-row">
+                  <span className="detail-label">QR Code:</span>
+                  <span className="detail-value">{member.qr_code}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Membership Information Section */}
+            <div className="details-section">
+              <h4 className="section-title">Membership Information</h4>
+              <div className="details-row">
+                <span className="detail-label">Seat Number:</span>
+                <span className="detail-value">
+                  <span className="badge badge-info">#{member.seat_no || 'N/A'}</span>
+                </span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Plan:</span>
+                <span className="detail-value">{member.plan_name || 'No plan assigned'}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Plan Price:</span>
+                <span className="detail-value">₹{member.plan_price || 0}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Join Date:</span>
+                <span className="detail-value">{new Date(member.join_date).toLocaleDateString()}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">End Date:</span>
+                <span className="detail-value">{new Date(member.end_date).toLocaleDateString()}</span>
+              </div>
+              <div className="details-row">
+                <span className="detail-label">Status:</span>
+                <span className="detail-value">
+                  {(() => {
+                    const isExpired = new Date(member.end_date) < new Date();
+                    if (member.status === 'suspended') {
+                      return <span className="badge badge-danger">Suspended</span>;
+                    } else if (isExpired) {
+                      return <span className="badge badge-danger">Expired</span>;
+                    } else {
+                      const daysLeft = Math.ceil((new Date(member.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+                      if (daysLeft <= 10) {
+                        return <span className="badge badge-warning">Expiring Soon ({daysLeft} days left)</span>;
+                      } else {
+                        return <span className="badge badge-success">Active ({daysLeft} days left)</span>;
+                      }
+                    }
+                  })()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button onClick={onClose} className="button button-secondary">
+            Close
+          </button>
+          <button onClick={onEdit} className="button button-primary">
+            ✏️ Edit Member
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Edit Member Modal Component
+const EditMemberModal = ({ member, plans, onSubmit, onClose }) => {
+  const [formData, setFormData] = useState({
+    id: member.id,
+    name: member.name || '',
+    email: member.email || '',
+    phone: member.phone || '',
+    birthDate: member.birth_date ? member.birth_date.split('T')[0] : '',
+    city: member.city || '',
+    address: member.address || '',
+    seatNo: member.seat_no || '',
+    planId: member.plan_id || '',
+    joinDate: member.join_date ? member.join_date.split('T')[0] : '',
+    endDate: member.end_date ? member.end_date.split('T')[0] : ''
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    // Auto-calculate end date when plan changes
+    if (name === 'planId' && value) {
+      const selectedPlan = plans.find(p => p.id === parseInt(value));
+      if (selectedPlan) {
+        const joinDate = new Date(formData.joinDate);
+        const endDate = new Date(joinDate);
+        endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
+        setFormData(prev => ({ 
+          ...prev, 
+          endDate: endDate.toISOString().split('T')[0] 
+        }));
+      }
+    }
+
+    // Auto-calculate end date when join date changes
+    if (name === 'joinDate' && value && formData.planId) {
+      const selectedPlan = plans.find(p => p.id === parseInt(formData.planId));
+      if (selectedPlan) {
+        const joinDate = new Date(value);
+        const endDate = new Date(joinDate);
+        endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
+        setFormData(prev => ({ 
+          ...prev, 
+          endDate: endDate.toISOString().split('T')[0] 
+        }));
+      }
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal member-form-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">✏️ Edit Member - {member.name}</h3>
+          <button onClick={onClose} className="modal-close" aria-label="Close modal">×</button>
+        </div>
+        
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div className="form-section">
+              <h4>Personal Information</h4>
+              <div className="form-grid form-grid-2">
+                <div className="form-group">
+                  <label className="form-label required">Name *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    className="form-control"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    className="form-control"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label required">Mobile No *</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    className="form-control"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Birth Date</label>
+                  <input
+                    type="date"
+                    name="birthDate"
+                    className="form-control"
+                    value={formData.birthDate}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">City</label>
+                  <input
+                    type="text"
+                    name="city"
+                    className="form-control"
+                    value={formData.city}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Seat No</label>
+                  <input
+                    type="text"
+                    name="seatNo"
+                    className="form-control"
+                    value={formData.seatNo}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h4>Membership Details</h4>
+              <div className="form-grid form-grid-2">
+                <div className="form-group">
+                  <label className="form-label required">Membership Plan *</label>
+                  <select
+                    name="planId"
+                    className="form-control"
+                    value={formData.planId}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select a plan</option>
+                    {plans.map(plan => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} - ₹{plan.price} ({plan.duration_days} days)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label required">Join Date *</label>
+                  <input
+                    type="date"
+                    name="joinDate"
+                    className="form-control"
+                    value={formData.joinDate}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label required">End Date *</label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    className="form-control"
+                    value={formData.endDate}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div className="form-group">
+                <label className="form-label">Address</label>
+                <textarea
+                  name="address"
+                  className="form-control"
+                  rows="3"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Enter full address..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="button button-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="button button-primary">
+              ✏️ Update Member
             </button>
           </div>
         </form>

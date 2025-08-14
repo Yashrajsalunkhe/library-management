@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('api', {
     get: (id) => ipcRenderer.invoke('member:get', id),
     update: (member) => ipcRenderer.invoke('member:update', member),
     delete: (id) => ipcRenderer.invoke('member:delete', id),
+    permanentDelete: (id) => ipcRenderer.invoke('member:permanentDelete', id),
     renew: (renewal) => ipcRenderer.invoke('member:renew', renewal),
     getNextSeatNumber: () => ipcRenderer.invoke('member:getNextSeatNumber')
   },

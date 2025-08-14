@@ -190,6 +190,36 @@ module.exports = (ipcMain) => {
     }
   });
 
+  ipcMain.handle('member:permanentDelete', async (event, id) => {
+    try {
+      // Get member details before deletion
+      const member = get('SELECT * FROM members WHERE id = ?', [id]);
+      if (!member) {
+        return { success: false, message: 'Member not found' };
+      }
+      
+      // Only allow permanent deletion of suspended members
+      if (member.status !== 'suspended') {
+        return { success: false, message: 'Only suspended members can be permanently deleted' };
+      }
+      
+      const result = transaction(() => {
+        // Delete related records first (to maintain referential integrity)
+        run('DELETE FROM payments WHERE member_id = ?', [id]);
+        run('DELETE FROM attendance WHERE member_id = ?', [id]);
+        
+        // Delete the member
+        run('DELETE FROM members WHERE id = ?', [id]);
+        
+        return { success: true, message: 'Member permanently deleted successfully' };
+      });
+      
+      return result;
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
   ipcMain.handle('member:renew', async (event, { memberId, planId, paymentDetails }) => {
     try {
       const result = transaction(() => {

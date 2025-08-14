@@ -2014,6 +2014,87 @@ body {
   max-width: 800px;
 }
 
+/* Member Details Modal */
+.member-details-modal {
+  max-width: 900px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.member-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.details-section {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.details-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.details-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: #4a5568;
+  min-width: 120px;
+}
+
+.detail-value {
+  color: #2d3748;
+  font-weight: 400;
+  text-align: right;
+  flex: 1;
+}
+
+/* Responsive design for member details modal */
+@media (max-width: 768px) {
+  .member-details-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .member-details-modal {
+    max-width: 95vw;
+    margin: 1rem;
+  }
+  
+  .details-section {
+    padding: 1rem;
+  }
+  
+  .details-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .detail-value {
+    text-align: left;
+  }
+}
+
 /* Member Table Improvements */
 .table th {
   font-size: 0.85rem;
