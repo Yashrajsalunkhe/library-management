@@ -54,7 +54,7 @@ const createTables = () => {
   db.prepare(`
     CREATE TABLE IF NOT EXISTS payments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      member_id INTEGER NOT NULL,
+      member_id INTEGER,
       amount REAL NOT NULL,
       mode TEXT DEFAULT 'cash' CHECK(mode IN ('cash', 'card', 'upi', 'bank_transfer')),
       plan_id INTEGER,
@@ -62,7 +62,7 @@ const createTables = () => {
       receipt_number TEXT,
       paid_at TEXT DEFAULT CURRENT_TIMESTAMP,
       created_by INTEGER,
-      FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE,
+      FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE SET NULL,
       FOREIGN KEY (plan_id) REFERENCES membership_plans (id),
       FOREIGN KEY (created_by) REFERENCES users (id)
     )
@@ -202,6 +202,82 @@ const runMigrations = () => {
             console.error(`Error adding column ${column.name}:`, error.message);
           }
         }
+      }
+    }
+
+    // Migration to remove CASCADE DELETE from payments table
+    try {
+      // Check if we need to migrate payments table by looking for CASCADE or missing SET NULL constraint
+      const foreignKeys = db.prepare("PRAGMA foreign_key_list(payments)").all();
+      const needsMigration = foreignKeys.some(fk => fk.table === 'members' && (fk.on_delete !== 'SET NULL' || fk.notnull));
+      
+      if (needsMigration) {
+        console.log('Migrating payments table to allow member deletion and preserve payment records...');
+        // Temporarily disable foreign key checks for this migration
+        const originalForeignKeys = db.pragma('foreign_keys');
+        db.pragma('foreign_keys = OFF');
+        
+        const transaction = db.transaction(() => {
+          // Step 1: Create backup table with existing data
+          db.prepare(`
+            CREATE TABLE payments_backup AS 
+            SELECT * FROM payments
+          `).run();
+          
+          // Step 2: Drop the old payments table
+          db.prepare('DROP TABLE payments').run();
+          
+          // Step 3: Create new payments table with member_id nullable and ON DELETE SET NULL
+          db.prepare(`
+            CREATE TABLE payments (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              member_id INTEGER,
+              amount REAL NOT NULL,
+              mode TEXT DEFAULT 'cash' CHECK(mode IN ('cash', 'card', 'upi', 'bank_transfer')),
+              plan_id INTEGER,
+              note TEXT,
+              receipt_number TEXT,
+              paid_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              created_by INTEGER,
+              FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE SET NULL,
+              FOREIGN KEY (plan_id) REFERENCES membership_plans (id),
+              FOREIGN KEY (created_by) REFERENCES users (id)
+            )
+          `).run();
+          
+          // Step 4: Restore data from backup
+          db.prepare(`
+            INSERT INTO payments 
+            SELECT * FROM payments_backup
+          `).run();
+          
+          // Step 5: Drop backup table
+          db.prepare('DROP TABLE payments_backup').run();
+        });
+        
+        try {
+          transaction();
+          console.log('Successfully migrated payments table - payments will now be preserved when members are deleted and member_id will be set to NULL.');
+        } finally {
+          // Restore original foreign key setting
+          db.pragma(`foreign_keys = ${originalForeignKeys ? 'ON' : 'OFF'}`);
+        }
+      } else {
+        console.log('Payments table already has correct foreign key constraints');
+      }
+    } catch (error) {
+      console.error('Error migrating payments table:', error.message);
+      // If backup table exists from failed migration, clean it up
+      try {
+        db.prepare('DROP TABLE IF EXISTS payments_backup').run();
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError.message);
+      }
+      // Ensure foreign keys are re-enabled
+      try {
+        db.pragma('foreign_keys = ON');
+      } catch (pragmaError) {
+        console.error('Error re-enabling foreign keys:', pragmaError.message);
       }
     }
     

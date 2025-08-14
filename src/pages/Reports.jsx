@@ -403,7 +403,7 @@ const Reports = ({ initialTab }) => {
   return (
     <div className="reports-page">
       <div className="page-header">
-        <h1>📊 Reports & Analytics</h1>
+        <h1>Reports & Analytics</h1>
         <p>Generate comprehensive reports and export data</p>
       </div>
 

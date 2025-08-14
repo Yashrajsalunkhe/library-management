@@ -57,6 +57,12 @@ module.exports = (ipcMain) => {
             nextSeat++;
           }
           seatNo = nextSeat.toString();
+        } else {
+          // Validate manually entered seat number
+          const existingMember = get('SELECT id FROM members WHERE seat_no = ?', [seatNo.trim()]);
+          if (existingMember) {
+            throw new Error(`Seat number ${seatNo} is already taken`);
+          }
         }
         
         // Handle case where no plan is assigned - use dummy dates that will be updated when plan is assigned
@@ -103,6 +109,33 @@ module.exports = (ipcMain) => {
       }
       
       return { success: true, data: nextSeat.toString() };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('member:validateSeatNumber', async (event, { seatNo, memberId = null }) => {
+    try {
+      if (!seatNo || seatNo.trim() === '') {
+        return { success: true, available: true };
+      }
+
+      let sql = 'SELECT id FROM members WHERE seat_no = ?';
+      const params = [seatNo.trim()];
+      
+      // If editing an existing member, exclude their current seat
+      if (memberId) {
+        sql += ' AND id != ?';
+        params.push(memberId);
+      }
+      
+      const existingMember = get(sql, params);
+      
+      return { 
+        success: true, 
+        available: !existingMember,
+        message: existingMember ? `Seat number ${seatNo} is already taken` : null
+      };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -164,6 +197,14 @@ module.exports = (ipcMain) => {
 
   ipcMain.handle('member:update', async (event, { id, ...updates }) => {
     try {
+      // Validate seat number if it's being updated
+      if (updates.seatNo !== undefined && updates.seatNo !== null && updates.seatNo.trim() !== '') {
+        const existingMember = get('SELECT id FROM members WHERE seat_no = ? AND id != ?', [updates.seatNo.trim(), id]);
+        if (existingMember) {
+          return { success: false, message: `Seat number ${updates.seatNo} is already taken` };
+        }
+      }
+
       const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
       const values = Object.values(updates);
       values.push(id);
@@ -206,22 +247,44 @@ module.exports = (ipcMain) => {
       if (member.status !== 'suspended') {
         return { success: false, message: 'Only suspended members can be permanently deleted' };
       }
-      
+
+      // Keep foreign keys enabled so ON DELETE SET NULL works properly
       const result = transaction(() => {
-        // With CASCADE DELETE enabled, related records will be automatically deleted
-        // But we'll keep manual deletion for safety and explicit control
-        run('DELETE FROM notifications WHERE member_id = ?', [id]);
-        run('DELETE FROM payments WHERE member_id = ?', [id]);
-        run('DELETE FROM attendance WHERE member_id = ?', [id]);
+        // Delete related records in order (but keep payments)
+        // Delete notifications (these have CASCADE)
+        const notificationsDeleted = run('DELETE FROM notifications WHERE member_id = ?', [id]);
+        console.log(`Deleted ${notificationsDeleted.changes} notifications for member ${id}`);
         
-        // Delete the member
-        run('DELETE FROM members WHERE id = ?', [id]);
+        // Delete attendance records (these have CASCADE)
+        const attendanceDeleted = run('DELETE FROM attendance WHERE member_id = ?', [id]);
+        console.log(`Deleted ${attendanceDeleted.changes} attendance records for member ${id}`);
         
-        return { success: true, message: 'Member permanently deleted successfully' };
+        // Check payment records before deletion (these should be preserved with member_id set to NULL)
+        const paymentCount = get('SELECT COUNT(*) as count FROM payments WHERE member_id = ?', [id]);
+        console.log(`Member ${id} has ${paymentCount.count} payment records that will be preserved`);
+        
+        // Delete the member - this will trigger ON DELETE SET NULL for payments
+        const memberDeleted = run('DELETE FROM members WHERE id = ?', [id]);
+        console.log(`Deleted member ${id}, affected rows: ${memberDeleted.changes}`);
+        
+        // Verify payment records are preserved with NULL member_id
+        const preservedPayments = get('SELECT COUNT(*) as count FROM payments WHERE member_id IS NULL');
+        console.log(`Total payment records with NULL member_id: ${preservedPayments.count}`);
+        
+        if (memberDeleted.changes === 0) {
+          throw new Error('Member not found or could not be deleted');
+        }
+        
+        return { 
+          success: true, 
+          message: `Member permanently deleted successfully. ${paymentCount.count} payment records have been preserved with member_id set to NULL.` 
+        };
       });
       
       return result;
+      
     } catch (error) {
+      console.error('Error during member deletion:', error);
       return { success: false, message: error.message };
     }
   });
@@ -344,7 +407,7 @@ module.exports = (ipcMain) => {
       let sql = `
         SELECT p.*, m.name as member_name, mp.name as plan_name
         FROM payments p
-        JOIN members m ON p.member_id = m.id
+        LEFT JOIN members m ON p.member_id = m.id
         LEFT JOIN membership_plans mp ON p.plan_id = mp.id
         WHERE 1=1
       `;
@@ -356,9 +419,9 @@ module.exports = (ipcMain) => {
       }
 
       if (filters.search) {
-        sql += ' AND (m.name LIKE ? OR m.email LIKE ? OR m.phone LIKE ? OR p.receipt_number LIKE ?)';
+        sql += ' AND (COALESCE(m.name, "") LIKE ? OR COALESCE(m.email, "") LIKE ? OR COALESCE(m.phone, "") LIKE ? OR p.receipt_number LIKE ? OR (m.name IS NULL AND ? LIKE "%deleted%"))';
         const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+        params.push(searchTerm, searchTerm, searchTerm, searchTerm, filters.search.toLowerCase());
       }
 
       if (filters.mode) {
@@ -990,6 +1053,27 @@ module.exports = (ipcMain) => {
       return { success: false, message: 'Export cancelled' };
     } catch (error) {
       console.error('Export data error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // NOTIFICATIONS
+  // ===================
+  
+  ipcMain.handle('notification:send-welcome', async (event, memberData) => {
+    try {
+      // Placeholder for welcome notification functionality
+      // This could be expanded to send email, SMS, or other notifications
+      console.log('Welcome notification requested for member:', memberData?.name || 'Unknown');
+      
+      // For now, just return success without actually sending anything
+      return { 
+        success: true, 
+        message: 'Welcome notification logged (implementation pending)' 
+      };
+    } catch (error) {
+      console.error('Welcome notification error:', error);
       return { success: false, message: error.message };
     }
   });

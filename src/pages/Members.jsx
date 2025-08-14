@@ -314,7 +314,7 @@ const Members = ({ initialAction = null }) => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1>👥 Members Management</h1>
+          <h1>Members Management</h1>
           <p>Manage library members and their memberships</p>
         </div>
         <button
@@ -421,6 +421,8 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
     seatNo: ''
   });
   const [nextSeatNumber, setNextSeatNumber] = useState('');
+  const [seatValidation, setSeatValidation] = useState({ isValid: true, message: '' });
+  const [validatingInput, setValidatingInput] = useState(false);
 
   useEffect(() => {
     loadNextSeatNumber();
@@ -438,13 +440,47 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
     }
   };
 
+  const validateSeatNumber = async (seatNo) => {
+    if (!seatNo || seatNo.trim() === '') {
+      setSeatValidation({ isValid: true, message: '' });
+      return;
+    }
+
+    setValidatingInput(true);
+    try {
+      const result = await window.api.member.validateSeatNumber({ seatNo: seatNo.trim() });
+      if (result.success) {
+        setSeatValidation({ 
+          isValid: result.available, 
+          message: result.available ? '' : result.message 
+        });
+      }
+    } catch (error) {
+      console.error('Failed to validate seat number:', error);
+      setSeatValidation({ isValid: false, message: 'Failed to validate seat number' });
+    } finally {
+      setValidatingInput(false);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Validate seat number when it changes
+    if (name === 'seatNo') {
+      validateSeatNumber(value);
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Check seat number validation before submitting
+    if (!seatValidation.isValid && formData.seatNo.trim() !== '') {
+      return;
+    }
+    
     // Add default values for plan-related fields when no plan is assigned
     const memberDataWithDefaults = {
       ...formData,
@@ -530,12 +566,20 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
                   <input
                     type="text"
                     name="seatNo"
-                    className="form-control"
+                    className={`form-control ${!seatValidation.isValid ? 'error' : ''}`}
                     value={formData.seatNo}
                     onChange={handleChange}
                     placeholder={`Next available: ${nextSeatNumber}`}
                   />
-                  <small className="form-help">Leave empty to auto-assign next available seat</small>
+                  {validatingInput && (
+                    <small className="form-help text-info">Validating seat number...</small>
+                  )}
+                  {!validatingInput && seatValidation.message && (
+                    <small className="form-help text-danger">{seatValidation.message}</small>
+                  )}
+                  {!validatingInput && !seatValidation.message && (
+                    <small className="form-help">Leave empty to auto-assign next available seat</small>
+                  )}
                 </div>
               </div>
             </div>
@@ -820,10 +864,43 @@ const EditMemberModal = ({ member, plans, onSubmit, onClose }) => {
     joinDate: member.join_date ? member.join_date.split('T')[0] : '',
     endDate: member.end_date ? member.end_date.split('T')[0] : ''
   });
+  const [seatValidation, setSeatValidation] = useState({ isValid: true, message: '' });
+  const [validatingInput, setValidatingInput] = useState(false);
+
+  const validateSeatNumber = async (seatNo) => {
+    if (!seatNo || seatNo.trim() === '' || seatNo === member.seat_no) {
+      setSeatValidation({ isValid: true, message: '' });
+      return;
+    }
+
+    setValidatingInput(true);
+    try {
+      const result = await window.api.member.validateSeatNumber({ 
+        seatNo: seatNo.trim(), 
+        memberId: member.id 
+      });
+      if (result.success) {
+        setSeatValidation({ 
+          isValid: result.available, 
+          message: result.available ? '' : result.message 
+        });
+      }
+    } catch (error) {
+      console.error('Failed to validate seat number:', error);
+      setSeatValidation({ isValid: false, message: 'Failed to validate seat number' });
+    } finally {
+      setValidatingInput(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+
+    // Validate seat number when it changes
+    if (name === 'seatNo') {
+      validateSeatNumber(value);
+    }
 
     // Auto-calculate end date when plan changes
     if (name === 'planId' && value) {
@@ -856,6 +933,12 @@ const EditMemberModal = ({ member, plans, onSubmit, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Check seat number validation before submitting
+    if (!seatValidation.isValid && formData.seatNo.trim() !== '') {
+      return;
+    }
+    
     onSubmit(formData);
   };
 
@@ -934,10 +1017,16 @@ const EditMemberModal = ({ member, plans, onSubmit, onClose }) => {
                   <input
                     type="text"
                     name="seatNo"
-                    className="form-control"
+                    className={`form-control ${!seatValidation.isValid ? 'error' : ''}`}
                     value={formData.seatNo}
                     onChange={handleChange}
                   />
+                  {validatingInput && (
+                    <small className="form-help text-info">Validating seat number...</small>
+                  )}
+                  {!validatingInput && seatValidation.message && (
+                    <small className="form-help text-danger">{seatValidation.message}</small>
+                  )}
                 </div>
               </div>
             </div>

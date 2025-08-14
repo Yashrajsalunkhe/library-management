@@ -398,7 +398,13 @@ const Payments = () => {
                       </td>
                       <td>
                         <div className="member-info">
-                          <div className="member-name">{payment.member_name}</div>
+                          <div className="member-name">
+                            {payment.member_name || (
+                              <span className="deleted-member">
+                                <em>Deleted Member</em>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td>
