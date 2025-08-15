@@ -285,6 +285,23 @@ app.on('window-all-closed', () => {
     scheduler.stop();
   }
 
+  // Kill Vite/React dev server if PID file exists
+  const fs = require('fs');
+  const path = require('path');
+  const pidFile = path.join(__dirname, '../dev.pid');
+  if (fs.existsSync(pidFile)) {
+    const devPid = parseInt(fs.readFileSync(pidFile, 'utf8'));
+    if (!isNaN(devPid)) {
+      try {
+        process.kill(devPid);
+        console.log(`Killed dev server (PID: ${devPid})`);
+      } catch (err) {
+        console.error(`Failed to kill dev server:`, err);
+      }
+    }
+    fs.unlinkSync(pidFile);
+  }
+
   if (process.platform !== 'darwin') {
     app.quit();
   }
