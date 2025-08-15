@@ -628,6 +628,15 @@ module.exports = (ipcMain) => {
     try {
       console.log('Fetching attendance report from', dateFrom, 'to', dateTo);
       
+      // Validate date inputs
+      if (!dateFrom || !dateTo) {
+        return { success: false, message: 'Date range is required' };
+      }
+      
+      // Ensure proper date format (YYYY-MM-DD)
+      const fromDate = new Date(dateFrom).toISOString().slice(0, 10);
+      const toDate = new Date(dateTo).toISOString().slice(0, 10);
+      
       const attendance = query(`
         SELECT 
           a.id,
@@ -639,6 +648,7 @@ module.exports = (ipcMain) => {
           a.check_out as original_check_out,
           TIME(a.check_in) as check_in,
           TIME(a.check_out) as check_out,
+          a.source,
           CASE 
             WHEN a.check_out IS NOT NULL THEN 'Completed'
             ELSE 'In Progress'
@@ -655,7 +665,7 @@ module.exports = (ipcMain) => {
         JOIN members m ON a.member_id = m.id
         WHERE DATE(a.check_in) BETWEEN ? AND ?
         ORDER BY a.check_in DESC
-      `, [dateFrom, dateTo]);
+      `, [fromDate, toDate]);
 
       console.log('Found', attendance.length, 'attendance records');
       return { success: true, data: attendance };
@@ -668,6 +678,15 @@ module.exports = (ipcMain) => {
   ipcMain.handle('report:payments', async (event, { dateFrom, dateTo }) => {
     try {
       console.log('Fetching payments report from', dateFrom, 'to', dateTo);
+      
+      // Validate date inputs
+      if (!dateFrom || !dateTo) {
+        return { success: false, message: 'Date range is required' };
+      }
+      
+      // Ensure proper date format (YYYY-MM-DD)
+      const fromDate = new Date(dateFrom).toISOString().slice(0, 10);
+      const toDate = new Date(dateTo).toISOString().slice(0, 10);
       
       const payments = query(`
         SELECT 
@@ -686,7 +705,7 @@ module.exports = (ipcMain) => {
         LEFT JOIN membership_plans mp ON p.plan_id = mp.id
         WHERE DATE(p.paid_at) BETWEEN ? AND ?
         ORDER BY p.paid_at DESC
-      `, [dateFrom, dateTo]);
+      `, [fromDate, toDate]);
 
       console.log('Found', payments.length, 'payment records');
       return { success: true, data: payments };
@@ -738,6 +757,12 @@ module.exports = (ipcMain) => {
       const path = require('path');
       const { shell } = require('electron');
       
+      console.log('Export request:', { type, format, dateRange, dataLength: data?.length });
+      
+      if (!data || data.length === 0) {
+        return { success: false, message: `No ${type} data available for the selected date range` };
+      }
+      
       // Create exports directory if it doesn't exist
       const exportsDir = path.join(__dirname, '..', 'exports');
       if (!fs.existsSync(exportsDir)) {
@@ -745,7 +770,8 @@ module.exports = (ipcMain) => {
       }
 
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-      const filename = `${type}_report_${timestamp}.${format}`;
+      const dateRangeStr = dateRange ? `_${dateRange.from}_to_${dateRange.to}` : '';
+      const filename = `${type}_report${dateRangeStr}_${timestamp}.${format}`;
       const filepath = path.join(exportsDir, filename);
 
       if (format === 'xlsx') {
@@ -757,101 +783,149 @@ module.exports = (ipcMain) => {
         workbook.creator = 'Library Management System';
         workbook.created = new Date();
         
+        // Add title and date range info
+        worksheet.mergeCells('A1:F1');
+        worksheet.getCell('A1').value = `${type.charAt(0).toUpperCase() + type.slice(1)} Report`;
+        worksheet.getCell('A1').font = { size: 16, bold: true };
+        worksheet.getCell('A1').alignment = { horizontal: 'center' };
+        
+        if (dateRange) {
+          worksheet.mergeCells('A2:F2');
+          worksheet.getCell('A2').value = `Period: ${dateRange.from} to ${dateRange.to}`;
+          worksheet.getCell('A2').font = { size: 12 };
+          worksheet.getCell('A2').alignment = { horizontal: 'center' };
+        }
+        
+        // Add empty row
+        worksheet.addRow([]);
+        const headerRowIndex = dateRange ? 4 : 3;
+        
         switch (type) {
           case 'attendance':
-            worksheet.columns = [
-              { header: 'Date', key: 'date', width: 12 },
-              { header: 'Member', key: 'member', width: 20 },
-              { header: 'Check In', key: 'checkin', width: 15 },
-              { header: 'Check Out', key: 'checkout', width: 15 },
-              { header: 'Duration (hours)', key: 'duration', width: 15 },
-              { header: 'Source', key: 'source', width: 12 }
-            ];
+            // Set headers starting from the appropriate row
+            const headers = ['Date', 'Member', 'Phone', 'Check In', 'Check Out', 'Duration', 'Status'];
+            worksheet.getRow(headerRowIndex).values = headers;
             
             data.forEach(record => {
-              const checkIn = record.check_in ? new Date(record.check_in) : null;
-              const checkOut = record.check_out ? new Date(record.check_out) : null;
-              const duration = checkIn && checkOut ? 
-                Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 100)) / 10 : null;
+              const date = record.date || (record.original_check_in ? new Date(record.original_check_in).toISOString().slice(0, 10) : '');
+              const checkInTime = record.check_in || '';
+              const checkOutTime = record.check_out || '';
+              const duration = record.duration || '';
+              const status = record.status || 'In Progress';
               
-              worksheet.addRow({
-                date: checkIn ? checkIn.toISOString().slice(0, 10) : '',
-                member: record.member_name,
-                checkin: checkIn ? checkIn.toTimeString().slice(0, 8) : '',
-                checkout: checkOut ? checkOut.toTimeString().slice(0, 8) : 'Active',
-                duration: duration || '',
-                source: record.source.charAt(0).toUpperCase() + record.source.slice(1)
-              });
+              worksheet.addRow([
+                date,
+                record.member_name || '',
+                record.phone || '',
+                checkInTime,
+                checkOutTime === '' ? 'Active' : checkOutTime,
+                duration,
+                status
+              ]);
             });
+            
+            // Set column widths
+            worksheet.columns = [
+              { width: 12 }, // Date
+              { width: 20 }, // Member
+              { width: 15 }, // Phone
+              { width: 12 }, // Check In
+              { width: 12 }, // Check Out
+              { width: 15 }, // Duration
+              { width: 12 }  // Status
+            ];
             break;
             
           case 'payments':
-            worksheet.columns = [
-              { header: 'Date', key: 'date', width: 12 },
-              { header: 'Receipt #', key: 'receipt', width: 15 },
-              { header: 'Member', key: 'member', width: 20 },
-              { header: 'Amount (₹)', key: 'amount', width: 12 },
-              { header: 'Mode', key: 'mode', width: 12 },
-              { header: 'Plan', key: 'plan', width: 15 },
-              { header: 'Note', key: 'note', width: 25 }
-            ];
+            // Set headers
+            const paymentHeaders = ['Date', 'Receipt #', 'Member', 'Amount (₹)', 'Mode', 'Plan', 'Note'];
+            worksheet.getRow(headerRowIndex).values = paymentHeaders;
             
             data.forEach(payment => {
-              worksheet.addRow({
-                date: new Date(payment.paid_at).toISOString().slice(0, 10),
-                receipt: payment.receipt_number || '',
-                member: payment.member_name,
-                amount: payment.amount,
-                mode: payment.mode.charAt(0).toUpperCase() + payment.mode.slice(1),
-                plan: payment.plan_name || '',
-                note: payment.note || ''
-              });
+              const paymentDate = payment.payment_date || payment.paid_at;
+              const date = paymentDate ? new Date(paymentDate).toISOString().slice(0, 10) : '';
+              
+              worksheet.addRow([
+                date,
+                payment.receipt_number || '',
+                payment.member_name || '',
+                payment.amount || 0,
+                (payment.payment_method || payment.mode || '').charAt(0).toUpperCase() + (payment.payment_method || payment.mode || '').slice(1),
+                payment.plan_name || '',
+                payment.note || ''
+              ]);
             });
+            
+            // Set column widths
+            worksheet.columns = [
+              { width: 12 }, // Date
+              { width: 15 }, // Receipt
+              { width: 20 }, // Member
+              { width: 12 }, // Amount
+              { width: 12 }, // Mode
+              { width: 15 }, // Plan
+              { width: 25 }  // Note
+            ];
+            
+            // Format amount column as currency
+            const amountColumn = worksheet.getColumn(4);
+            amountColumn.numFmt = '₹#,##0.00';
             break;
             
           case 'members':
-            worksheet.columns = [
-              { header: 'Name', key: 'name', width: 20 },
-              { header: 'Email', key: 'email', width: 25 },
-              { header: 'Phone', key: 'phone', width: 15 },
-              { header: 'Plan', key: 'plan', width: 15 },
-              { header: 'Join Date', key: 'joinDate', width: 12 },
-              { header: 'End Date', key: 'endDate', width: 12 },
-              { header: 'Status', key: 'status', width: 10 }
-            ];
+            // Set headers
+            const memberHeaders = ['Name', 'Email', 'Phone', 'Plan', 'Join Date', 'End Date', 'Status'];
+            worksheet.getRow(headerRowIndex).values = memberHeaders;
             
             data.forEach(member => {
-              worksheet.addRow({
-                name: member.name,
-                email: member.email || '',
-                phone: member.phone || '',
-                plan: member.plan_name || '',
-                joinDate: new Date(member.join_date).toISOString().slice(0, 10),
-                endDate: new Date(member.end_date).toISOString().slice(0, 10),
-                status: member.status.charAt(0).toUpperCase() + member.status.slice(1)
-              });
+              const joinDate = member.join_date ? new Date(member.join_date).toISOString().slice(0, 10) : '';
+              const endDate = member.end_date ? new Date(member.end_date).toISOString().slice(0, 10) : '';
+              
+              worksheet.addRow([
+                member.name || '',
+                member.email || '',
+                member.phone || '',
+                member.plan_name || member.plan || '',
+                joinDate,
+                endDate,
+                (member.status || '').charAt(0).toUpperCase() + (member.status || '').slice(1)
+              ]);
             });
+            
+            // Set column widths
+            worksheet.columns = [
+              { width: 20 }, // Name
+              { width: 25 }, // Email
+              { width: 15 }, // Phone
+              { width: 15 }, // Plan
+              { width: 12 }, // Join Date
+              { width: 12 }, // End Date
+              { width: 10 }  // Status
+            ];
             break;
         }
         
         // Style the header row
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).fill = {
+        const headerRow = worksheet.getRow(headerRowIndex);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FFE6F3FF' }
         };
         
-        // Add borders to all cells
+        // Add borders to all cells with data
         worksheet.eachRow((row, rowNumber) => {
-          row.eachCell((cell) => {
-            cell.border = {
-              top: { style: 'thin' },
-              left: { style: 'thin' },
-              bottom: { style: 'thin' },
-              right: { style: 'thin' }
-            };
-          });
+          if (rowNumber >= headerRowIndex) {
+            row.eachCell((cell) => {
+              cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+              };
+            });
+          }
         });
         
         await workbook.xlsx.writeFile(filepath);
@@ -861,28 +935,45 @@ module.exports = (ipcMain) => {
         
         switch (type) {
           case 'attendance':
-            csvContent = 'Date,Member,Check In,Check Out,Duration,Source\n';
+            csvContent = 'Date,Member,Phone,Check In,Check Out,Duration,Status\n';
             data.forEach(record => {
-              const checkIn = record.check_in ? new Date(record.check_in) : null;
-              const checkOut = record.check_out ? new Date(record.check_out) : null;
-              const duration = checkIn && checkOut ? 
-                Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 100)) / 10 : '';
+              const date = record.date || (record.original_check_in ? new Date(record.original_check_in).toISOString().slice(0, 10) : '');
+              const checkInTime = record.check_in || '';
+              const checkOutTime = record.check_out || '';
+              const duration = record.duration || '';
+              const status = record.status || 'In Progress';
               
-              csvContent += `"${checkIn ? checkIn.toISOString().slice(0, 10) : ''}","${record.member_name}","${checkIn ? checkIn.toTimeString().slice(0, 8) : ''}","${checkOut ? checkOut.toTimeString().slice(0, 8) : 'Active'}","${duration ? duration + 'h' : ''}","${record.source}"\n`;
+              // Escape quotes in data and wrap in quotes
+              const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+              
+              csvContent += `${escapeCsv(date)},${escapeCsv(record.member_name)},${escapeCsv(record.phone)},${escapeCsv(checkInTime)},${escapeCsv(checkOutTime === '' ? 'Active' : checkOutTime)},${escapeCsv(duration)},${escapeCsv(status)}\n`;
             });
             break;
             
           case 'payments':
             csvContent = 'Date,Receipt #,Member,Amount,Mode,Plan,Note\n';
             data.forEach(payment => {
-              csvContent += `"${new Date(payment.paid_at).toISOString().slice(0, 10)}","${payment.receipt_number || ''}","${payment.member_name}","${payment.amount}","${payment.mode}","${payment.plan_name || ''}","${payment.note || ''}"\n`;
+              const paymentDate = payment.payment_date || payment.paid_at;
+              const date = paymentDate ? new Date(paymentDate).toISOString().slice(0, 10) : '';
+              const mode = payment.payment_method || payment.mode || '';
+              
+              // Escape quotes in data and wrap in quotes
+              const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+              
+              csvContent += `${escapeCsv(date)},${escapeCsv(payment.receipt_number)},${escapeCsv(payment.member_name)},${escapeCsv(payment.amount)},${escapeCsv(mode)},${escapeCsv(payment.plan_name)},${escapeCsv(payment.note)}\n`;
             });
             break;
             
           case 'members':
             csvContent = 'Name,Email,Phone,Plan,Join Date,End Date,Status\n';
             data.forEach(member => {
-              csvContent += `"${member.name}","${member.email || ''}","${member.phone || ''}","${member.plan_name || ''}","${new Date(member.join_date).toISOString().slice(0, 10)}","${new Date(member.end_date).toISOString().slice(0, 10)}","${member.status}"\n`;
+              const joinDate = member.join_date ? new Date(member.join_date).toISOString().slice(0, 10) : '';
+              const endDate = member.end_date ? new Date(member.end_date).toISOString().slice(0, 10) : '';
+              
+              // Escape quotes in data and wrap in quotes
+              const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+              
+              csvContent += `${escapeCsv(member.name)},${escapeCsv(member.email)},${escapeCsv(member.phone)},${escapeCsv(member.plan_name || member.plan)},${escapeCsv(joinDate)},${escapeCsv(endDate)},${escapeCsv(member.status)}\n`;
             });
             break;
         }
@@ -893,10 +984,16 @@ module.exports = (ipcMain) => {
       // Open the exports folder
       shell.showItemInFolder(filepath);
       
-      return { success: true, message: `Report exported to ${filename}`, filepath };
+      return { 
+        success: true, 
+        message: `${type.charAt(0).toUpperCase() + type.slice(1)} report exported successfully!`,
+        filename,
+        filepath,
+        recordCount: data.length
+      };
     } catch (error) {
       console.error('Export error:', error);
-      return { success: false, message: error.message };
+      return { success: false, message: `Export failed: ${error.message}` };
     }
   });
 
