@@ -8,10 +8,33 @@ if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const db = new Database(path.join(__dirname, 'library.db'));
+const dbPath = path.join(__dirname, 'library.db');
+
+// Create database with explicit options to ensure write access
+const db = new Database(dbPath, { 
+  verbose: console.log,
+  fileMustExist: false,
+  readonly: false
+});
+
+// Set pragmas for better performance and reliability
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
+db.pragma('cache_size = 1000');
+db.pragma('temp_store = memory');
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
+
+// Test database write access
+try {
+  db.prepare('CREATE TABLE IF NOT EXISTS _test_write (id INTEGER)').run();
+  db.prepare('DROP TABLE IF EXISTS _test_write').run();
+  console.log('Database write access verified');
+} catch (error) {
+  console.error('Database write access failed:', error.message);
+  throw new Error(`Database is readonly or inaccessible: ${error.message}`);
+}
 
 // Create tables
 const createTables = () => {
