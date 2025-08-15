@@ -1159,6 +1159,12 @@ body {
   color: #2d3748;
 }
 
+.deleted-member {
+  color: #e53e3e;
+  font-style: italic;
+  opacity: 0.7;
+}
+
 .payment-date {
   font-size: 0.875rem;
   color: #4a5568;
@@ -2098,6 +2104,20 @@ body {
   .detail-value {
     text-align: left;
   }
+}
+
+/* Additional utility classes for form validation */
+.form-control.error {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
+
+.text-danger {
+  color: #e53e3e;
+}
+
+.text-info {
+  color: #3182ce;
 }
 
 /* Member Table Improvements */
