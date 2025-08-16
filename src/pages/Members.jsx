@@ -4,6 +4,7 @@ import { useNotification } from '../contexts/NotificationContext';
 const Members = ({ initialAction = null }) => {
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
@@ -19,12 +20,24 @@ const Members = ({ initialAction = null }) => {
   useEffect(() => {
     loadMembers();
     loadPlans();
+    loadSettings();
     
     // Handle initial action from menu
     if (initialAction?.action === 'new') {
       setShowAddModal(true);
     }
   }, [initialAction]);
+
+  const loadSettings = async () => {
+    try {
+      const result = await window.api.settings.getSettings();
+      if (result.success) {
+        setSettings(result.settings);
+      }
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  };
 
   const loadMembers = async () => {
     try {
@@ -360,6 +373,7 @@ const Members = ({ initialAction = null }) => {
       {showAddModal && (
         <AddMemberModal
           plans={plans}
+          settings={settings}
           onSubmit={handleAddMember}
           onClose={() => setShowAddModal(false)}
         />
@@ -398,6 +412,7 @@ const Members = ({ initialAction = null }) => {
         <EditMemberModal
           member={selectedMember}
           plans={plans}
+          settings={settings}
           onSubmit={handleEditMember}
           onClose={() => {
             setShowEditModal(false);
@@ -410,7 +425,7 @@ const Members = ({ initialAction = null }) => {
 };
 
 // Add Member Modal Component
-const AddMemberModal = ({ plans, onSubmit, onClose }) => {
+const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -418,6 +433,8 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
     birthDate: '',
     city: '',
     address: '',
+    idNumber: '',
+    idDocumentType: '',
     seatNo: ''
   });
   const [nextSeatNumber, setNextSeatNumber] = useState('');
@@ -426,7 +443,15 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
 
   useEffect(() => {
     loadNextSeatNumber();
-  }, []);
+    
+    // Set default ID document type from settings
+    if (settings?.membership?.selectedIdDocumentType) {
+      setFormData(prev => ({ 
+        ...prev, 
+        idDocumentType: settings.membership.selectedIdDocumentType 
+      }));
+    }
+  }, [settings]);
 
   const loadNextSeatNumber = async () => {
     try {
@@ -581,6 +606,46 @@ const AddMemberModal = ({ plans, onSubmit, onClose }) => {
                     <small className="form-help">Leave empty to auto-assign next available seat</small>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div className="form-group">
+                <label className="form-label">ID Document Type</label>
+                <select
+                  name="idDocumentType"
+                  className="form-control"
+                  value={formData.idDocumentType}
+                  onChange={handleChange}
+                >
+                  <option value="">Select Document Type</option>
+                  {settings?.membership?.idDocumentTypes?.filter(doc => doc.enabled).map(docType => (
+                    <option key={docType.id} value={docType.id}>
+                      {docType.label}
+                    </option>
+                  ))}
+                </select>
+                <small className="form-help">Select the type of ID document being provided</small>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  {settings?.membership?.idNumber || 'ID Number'}
+                </label>
+                <input
+                  type="text"
+                  name="idNumber"
+                  className="form-control"
+                  value={formData.idNumber}
+                  onChange={handleChange}
+                  placeholder="Enter ID number"
+                />
+                <small className="form-help">
+                  {formData.idDocumentType && settings?.membership?.idDocumentTypes ? 
+                    `Enter ${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'ID'} number` : 
+                    'Enter ID document number'
+                  }
+                </small>
               </div>
             </div>
 
@@ -772,6 +837,18 @@ const MemberDetailsModal = ({ member, onEdit, onClose }) => {
                 <span className="detail-label">Address:</span>
                 <span className="detail-value">{member.address || 'Not provided'}</span>
               </div>
+              {member.id_document_type && (
+                <div className="details-row">
+                  <span className="detail-label">ID Document Type:</span>
+                  <span className="detail-value">{member.id_document_type}</span>
+                </div>
+              )}
+              {member.id_number && (
+                <div className="details-row">
+                  <span className="detail-label">ID Number:</span>
+                  <span className="detail-value">{member.id_number}</span>
+                </div>
+              )}
               {member.qr_code && (
                 <div className="details-row">
                   <span className="detail-label">QR Code:</span>
@@ -850,7 +927,7 @@ const MemberDetailsModal = ({ member, onEdit, onClose }) => {
 };
 
 // Edit Member Modal Component
-const EditMemberModal = ({ member, plans, onSubmit, onClose }) => {
+const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
   const [formData, setFormData] = useState({
     id: member.id,
     name: member.name || '',
@@ -859,6 +936,8 @@ const EditMemberModal = ({ member, plans, onSubmit, onClose }) => {
     birthDate: member.birth_date ? member.birth_date.split('T')[0] : '',
     city: member.city || '',
     address: member.address || '',
+    idNumber: member.id_number || '',
+    idDocumentType: member.id_document_type || '',
     seatNo: member.seat_no || '',
     planId: member.plan_id || '',
     joinDate: member.join_date ? member.join_date.split('T')[0] : '',
@@ -1027,6 +1106,54 @@ const EditMemberModal = ({ member, plans, onSubmit, onClose }) => {
                   {!validatingInput && seatValidation.message && (
                     <small className="form-help text-danger">{seatValidation.message}</small>
                   )}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h4>ID & Address Information</h4>
+              <div className="form-grid form-grid-2">
+                <div className="form-group">
+                  <label className="form-label">ID Document Type</label>
+                  <select
+                    name="idDocumentType"
+                    className="form-control"
+                    value={formData.idDocumentType}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Document Type</option>
+                    {settings?.membership?.idDocumentTypes?.filter(doc => doc.enabled).map(docType => (
+                      <option key={docType.id} value={docType.id}>
+                        {docType.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    {settings?.membership?.idNumber || 'ID Number'}
+                  </label>
+                  <input
+                    type="text"
+                    name="idNumber"
+                    className="form-control"
+                    value={formData.idNumber}
+                    onChange={handleChange}
+                    placeholder="Enter ID number"
+                  />
+                </div>
+
+                <div className="form-group" style={{gridColumn: '1 / -1'}}>
+                  <label className="form-label">Address</label>
+                  <textarea
+                    name="address"
+                    className="form-control"
+                    rows="3"
+                    value={formData.address}
+                    onChange={handleChange}
+                    placeholder="Enter full address..."
+                  />
                 </div>
               </div>
             </div>

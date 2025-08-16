@@ -2,6 +2,54 @@ const { db, query, get, run, transaction } = require('./db');
 const bcrypt = require('bcryptjs');
 const { format, addDays, parseISO } = require('date-fns');
 
+// Helper function to check if current time is within operating hours
+const isTimeWithinOperatingHours = (currentTime, operatingHours) => {
+  if (!operatingHours || !currentTime) return true;
+
+  const timeToMinutes = (timeStr) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const currentMinutes = timeToMinutes(currentTime);
+  
+  // Check day shift
+  const dayOpenMinutes = timeToMinutes(operatingHours.dayShift.openTime);
+  const dayCloseMinutes = timeToMinutes(operatingHours.dayShift.closeTime);
+  
+  if (dayOpenMinutes <= dayCloseMinutes) {
+    // Normal day shift (e.g., 8:00 to 18:00)
+    if (currentMinutes >= dayOpenMinutes && currentMinutes <= dayCloseMinutes) {
+      return true;
+    }
+  } else {
+    // Overnight day shift (e.g., 22:00 to 06:00)
+    if (currentMinutes >= dayOpenMinutes || currentMinutes <= dayCloseMinutes) {
+      return true;
+    }
+  }
+
+  // Check night shift if enabled
+  if (operatingHours.enableNightShift) {
+    const nightOpenMinutes = timeToMinutes(operatingHours.nightShift.openTime);
+    const nightCloseMinutes = timeToMinutes(operatingHours.nightShift.closeTime);
+    
+    if (nightOpenMinutes <= nightCloseMinutes) {
+      // Normal night shift
+      if (currentMinutes >= nightOpenMinutes && currentMinutes <= nightCloseMinutes) {
+        return true;
+      }
+    } else {
+      // Overnight night shift
+      if (currentMinutes >= nightOpenMinutes || currentMinutes <= nightCloseMinutes) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 module.exports = (ipcMain) => {
   // ===================
   // AUTHENTICATION
@@ -70,8 +118,8 @@ module.exports = (ipcMain) => {
         const endDate = member.endDate || '1900-01-01';
         
         const info = run(`
-          INSERT INTO members (name, email, phone, birth_date, city, address, seat_no, plan_id, join_date, end_date, qr_code)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO members (name, email, phone, birth_date, city, address, id_number, id_document_type, seat_no, plan_id, join_date, end_date, qr_code)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           member.name,
           member.email,
@@ -79,6 +127,8 @@ module.exports = (ipcMain) => {
           member.birthDate,
           member.city,
           member.address,
+          member.idNumber,
+          member.idDocumentType,
           seatNo,
           member.planId,
           joinDate,
@@ -359,9 +409,10 @@ module.exports = (ipcMain) => {
   
   ipcMain.handle('plan:list', async () => {
     try {
-      const plans = query('SELECT * FROM membership_plans ORDER BY duration_days');
+      const plans = query('SELECT * FROM membership_plans ORDER BY created_at DESC');
       return { success: true, data: plans };
     } catch (error) {
+      console.error('List plans error:', error);
       return { success: false, message: error.message };
     }
   });
@@ -371,9 +422,32 @@ module.exports = (ipcMain) => {
       const info = run(`
         INSERT INTO membership_plans (name, duration_days, price, description)
         VALUES (?, ?, ?, ?)
-      `, [plan.name, plan.durationDays, plan.price, plan.description]);
+      `, [plan.name, plan.duration_days, plan.price, plan.description]);
 
       return { success: true, data: { id: info.lastInsertRowid } };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('plan:update', async (event, planId, plan) => {
+    try {
+      run(`
+        UPDATE membership_plans 
+        SET name = ?, duration_days = ?, price = ?, description = ?
+        WHERE id = ?
+      `, [plan.name, plan.duration_days, plan.price, plan.description, planId]);
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('plan:delete', async (event, planId) => {
+    try {
+      run(`DELETE FROM membership_plans WHERE id = ?`, [planId]);
+      return { success: true };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -459,6 +533,32 @@ module.exports = (ipcMain) => {
   
   ipcMain.handle('attendance:checkin', async (event, { memberId, source = 'manual' }) => {
     try {
+      // Get operating hours from settings
+      const operatingHoursSettings = query('SELECT value FROM settings WHERE key = ?', ['general.operatingHours']);
+      let operatingHours = null;
+      
+      if (operatingHoursSettings.length > 0) {
+        try {
+          operatingHours = JSON.parse(operatingHoursSettings[0].value);
+        } catch (e) {
+          console.log('Could not parse operating hours settings');
+        }
+      }
+
+      // Validate operating hours if configured
+      if (operatingHours && source === 'manual') {
+        const now = new Date();
+        const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+        const isWithinHours = isTimeWithinOperatingHours(currentTime, operatingHours);
+
+        if (!isWithinHours) {
+          return { 
+            success: false, 
+            message: 'Check-in not allowed outside operating hours. Please contact administration.' 
+          };
+        }
+      }
+
       // Check if already checked in today
       const today = format(new Date(), 'yyyy-MM-dd');
       const existingEntry = get(`
@@ -483,6 +583,29 @@ module.exports = (ipcMain) => {
 
   ipcMain.handle('attendance:checkout', async (event, { memberId }) => {
     try {
+      // Get operating hours from settings
+      const operatingHoursSettings = query('SELECT value FROM settings WHERE key = ?', ['general.operatingHours']);
+      let operatingHours = null;
+      
+      if (operatingHoursSettings.length > 0) {
+        try {
+          operatingHours = JSON.parse(operatingHoursSettings[0].value);
+        } catch (e) {
+          console.log('Could not parse operating hours settings');
+        }
+      }
+
+      // Validate operating hours if configured (allow checkout during any time, but warn)
+      if (operatingHours) {
+        const now = new Date();
+        const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+        const isWithinHours = isTimeWithinOperatingHours(currentTime, operatingHours);
+
+        if (!isWithinHours) {
+          console.log('Check-out performed outside operating hours for member:', memberId);
+        }
+      }
+
       const today = format(new Date(), 'yyyy-MM-dd');
       const result = run(`
         UPDATE attendance 
@@ -1049,6 +1172,42 @@ module.exports = (ipcMain) => {
       return { success: true, message: 'Settings saved successfully' };
     } catch (error) {
       console.error('Save settings error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('settings:applySystemWide', async (event, settings) => {
+    try {
+      // Apply operating hours validation to attendance system
+      if (settings.general?.operatingHours) {
+        console.log('Operating hours updated:', settings.general.operatingHours);
+        // This will be used by attendance check-in/check-out validation
+      }
+
+      // Custom payment plans are now managed entirely through settings.payment.customPlans
+      // No more automatic creation or updates to membership_plans table
+
+      // Apply total seats configuration
+      if (settings.general?.totalSeats) {
+        console.log('Total seats updated:', settings.general.totalSeats);
+        // This will be used for seat allocation validation
+      }
+
+      // Apply holidays to the system
+      if (settings.general?.holidays) {
+        console.log('Holidays updated:', settings.general.holidays.length, 'holidays');
+        // This will be used in booking and attendance modules
+      }
+
+      // Apply notification settings
+      if (settings.notifications?.paymentReminderDays) {
+        console.log('Payment reminder days updated:', settings.notifications.paymentReminderDays);
+        // This will be used by the notification service
+      }
+
+      return { success: true, message: 'Settings applied system-wide successfully' };
+    } catch (error) {
+      console.error('Apply system-wide settings error:', error);
       return { success: false, message: error.message };
     }
   });

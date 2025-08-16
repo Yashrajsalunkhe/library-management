@@ -1930,6 +1930,285 @@ body {
   box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
 }
 
+/* Enhanced Settings Styles */
+
+/* Operating Hours Grid */
+.operating-hours-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.shift-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.shift-section h4 {
+  margin: 0 0 1rem 0;
+  color: #2d3748;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.time-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Logo Section */
+.logo-section {
+  margin-top: 1rem;
+}
+
+.logo-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.logo-image {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: white;
+}
+
+.logo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.logo-upload {
+  margin-top: 1rem;
+}
+
+.upload-area {
+  display: block;
+  width: 100%;
+  padding: 2rem;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f8fafc;
+}
+
+.upload-area:hover {
+  border-color: #4299e1;
+  background: #ebf8ff;
+}
+
+.upload-placeholder {
+  color: #4a5568;
+}
+
+.upload-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.upload-placeholder p {
+  margin: 0.5rem 0;
+  font-weight: 600;
+}
+
+.upload-placeholder small {
+  color: #718096;
+  font-size: 0.875rem;
+}
+
+/* Holiday Section */
+.holiday-section {
+  margin-top: 1rem;
+}
+
+.add-holiday {
+  margin-bottom: 1rem;
+}
+
+.holiday-inputs {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.holidays-list {
+  margin-top: 1rem;
+}
+
+.holidays-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.holidays-table th,
+.holidays-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.holidays-table th {
+  background: #f8fafc;
+  color: #2d3748;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.holidays-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.no-holidays {
+  text-align: center;
+  color: #718096;
+  font-style: italic;
+  padding: 2rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Payment and Notification Sections */
+.payment-section,
+.notification-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.payment-section h4,
+.notification-section h4 {
+  margin: 0 0 1rem 0;
+  color: #2d3748;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.info-section {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 8px;
+}
+
+.info-section h4 {
+  margin: 0 0 0.5rem 0;
+  color: #2b6cb0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.info-section ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #2c5282;
+}
+
+.info-section li {
+  margin-bottom: 0.25rem;
+}
+
+/* Button Enhancements */
+.button-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.button-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: #cbd5e0;
+  transform: translateY(-1px);
+}
+
+/* Form Help Text Enhancement */
+.form-help {
+  display: block;
+  margin-top: 0.25rem;
+  color: #718096;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* Responsive Design for Enhanced Features */
+@media (max-width: 768px) {
+  .operating-hours-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .time-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .holiday-inputs {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .logo-preview {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .logo-actions {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .payment-section,
+  .notification-section {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .upload-area {
+    padding: 1.5rem;
+  }
+
+  .upload-icon {
+    font-size: 1.5rem;
+  }
+
+  .holidays-table th,
+  .holidays-table td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .logo-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
 /* Settings responsive design */
 @media (max-width: 768px) {
   .settings-container {
@@ -2174,4 +2453,212 @@ body {
 
 .text-gray-500 {
   color: #6b7280;
+}
+
+/* Enhanced Settings Styles */
+
+/* ID Document Types Grid */
+.id-document-types {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.id-document-types h4 {
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+  font-size: 1.1rem;
+}
+
+.section-description {
+  color: #718096;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.document-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.document-type-item {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8f9fa;
+}
+
+/* Payment Plans Styles */
+.plans-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.plan-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: #f8f9fa;
+}
+
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.plan-header h5 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.plan-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.plan-fields .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.add-plan-btn {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 2px dashed #cbd5e0;
+  background: transparent;
+  color: #4a5568;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.add-plan-btn:hover {
+  border-color: #4299e1;
+  color: #4299e1;
+  background: #ebf8ff;
+}
+
+.button-danger-small {
+  background: #e53e3e;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.button-danger-small:hover {
+  background: #c53030;
+}
+
+/* Payment section styling */
+.payment-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.payment-section:last-child {
+  border-bottom: none;
+}
+
+.payment-section h4 {
+  margin-bottom: 1rem;
+  color: #2d3748;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Form help text */
+.form-help {
+  color: #718096;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .plan-fields {
+    grid-template-columns: 1fr;
+  }
+  
+  .document-types-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .plan-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* Operating Hours Styles */
+.operating-hours-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin: 1.5rem 0;
+}
+
+.shift-section {
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+.shift-section h4 {
+  margin: 0 0 1rem 0;
+  color: #2d3748;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.time-inputs {
+  display: grid;
+  gap: 1rem;
+}
+
+.time-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-input-group input[type="time"] {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.time-input-group select {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  min-width: 80px;
+}
+
+@media (max-width: 768px) {
+  .operating-hours-grid {
+    grid-template-columns: 1fr;
+  }
 }

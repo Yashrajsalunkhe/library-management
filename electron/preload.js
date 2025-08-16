@@ -24,7 +24,9 @@ contextBridge.exposeInMainWorld('api', {
   // Membership Plans
   plan: {
     list: () => ipcRenderer.invoke('plan:list'),
-    add: (plan) => ipcRenderer.invoke('plan:add', plan)
+    add: (plan) => ipcRenderer.invoke('plan:add', plan),
+    update: (planId, plan) => ipcRenderer.invoke('plan:update', planId, plan),
+    delete: (planId) => ipcRenderer.invoke('plan:delete', planId)
   },
 
   // Payments

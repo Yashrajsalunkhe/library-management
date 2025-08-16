@@ -60,6 +60,7 @@ const createTables = () => {
       birth_date TEXT,
       city TEXT,
       address TEXT,
+      id_number TEXT,
       seat_no TEXT UNIQUE,
       plan_id INTEGER,
       join_date TEXT NOT NULL,
@@ -166,15 +167,6 @@ const createTables = () => {
   }
 
   // Insert default membership plans
-  const planExists = db.prepare('SELECT COUNT(*) as count FROM membership_plans').get();
-  if (planExists.count === 0) {
-    const insertPlan = db.prepare('INSERT INTO membership_plans (name, duration_days, price, description) VALUES (?, ?, ?, ?)');
-    insertPlan.run('Monthly', 30, 1000, 'Monthly membership plan');
-    insertPlan.run('Quarterly', 90, 2700, 'Quarterly membership plan with 10% discount');
-    insertPlan.run('Half Yearly', 180, 5000, 'Half yearly plan with 17% discount');
-    insertPlan.run('Annual', 365, 9000, 'Annual plan with 25% discount');
-  }
-
   // Insert default admin user (password: admin123)
   const userExists = db.prepare('SELECT COUNT(*) as count FROM users').get();
   if (userExists.count === 0) {
@@ -209,7 +201,9 @@ const runMigrations = () => {
     const columnsToAdd = [
       { name: 'birth_date', sql: 'ALTER TABLE members ADD COLUMN birth_date TEXT' },
       { name: 'city', sql: 'ALTER TABLE members ADD COLUMN city TEXT' },
-      { name: 'seat_no', sql: 'ALTER TABLE members ADD COLUMN seat_no TEXT' }
+      { name: 'seat_no', sql: 'ALTER TABLE members ADD COLUMN seat_no TEXT' },
+      { name: 'id_number', sql: 'ALTER TABLE members ADD COLUMN id_number TEXT' },
+      { name: 'id_document_type', sql: 'ALTER TABLE members ADD COLUMN id_document_type TEXT' }
     ];
     
     for (const column of columnsToAdd) {
