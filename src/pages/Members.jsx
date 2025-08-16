@@ -459,9 +459,21 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
       if (result.success) {
         setNextSeatNumber(result.data);
         setFormData(prev => ({ ...prev, seatNo: result.data }));
+      } else {
+        // Handle case when no seats are available
+        setNextSeatNumber('');
+        setFormData(prev => ({ ...prev, seatNo: '' }));
+        setSeatValidation({ 
+          isValid: false, 
+          message: result.message || 'No seats available'
+        });
       }
     } catch (error) {
       console.error('Failed to get next seat number:', error);
+      setSeatValidation({ 
+        isValid: false, 
+        message: 'Failed to get seat number'
+      });
     }
   };
 
@@ -594,7 +606,8 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
                     className={`form-control ${!seatValidation.isValid ? 'error' : ''}`}
                     value={formData.seatNo}
                     onChange={handleChange}
-                    placeholder={`Next available: ${nextSeatNumber}`}
+                    placeholder={nextSeatNumber ? `Next available: ${nextSeatNumber}` : 'No seats available'}
+                    disabled={!nextSeatNumber && !formData.seatNo}
                   />
                   {validatingInput && (
                     <small className="form-help text-info">Validating seat number...</small>
@@ -602,51 +615,81 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
                   {!validatingInput && seatValidation.message && (
                     <small className="form-help text-danger">{seatValidation.message}</small>
                   )}
-                  {!validatingInput && !seatValidation.message && (
+                  {!validatingInput && !seatValidation.message && nextSeatNumber && (
                     <small className="form-help">Leave empty to auto-assign next available seat</small>
+                  )}
+                  {!validatingInput && !nextSeatNumber && !seatValidation.message && (
+                    <small className="form-help text-warning">All seats are occupied. Please check settings for total seats configuration.</small>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="form-section">
-              <div className="form-group">
-                <label className="form-label">ID Document Type</label>
-                <select
-                  name="idDocumentType"
-                  className="form-control"
-                  value={formData.idDocumentType}
-                  onChange={handleChange}
-                >
-                  <option value="">Select Document Type</option>
-                  {settings?.membership?.idDocumentTypes?.filter(doc => doc.enabled).map(docType => (
-                    <option key={docType.id} value={docType.id}>
-                      {docType.label}
-                    </option>
-                  ))}
-                </select>
-                <small className="form-help">Select the type of ID document being provided</small>
-              </div>
+              <h4>📄 Identity Document</h4>
+              {settings?.membership?.idDocumentTypes?.filter(doc => doc.enabled)?.length > 0 ? (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Document Type *</label>
+                    <select
+                      name="idDocumentType"
+                      className="form-control"
+                      value={formData.idDocumentType}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select Document Type</option>
+                      {settings.membership.idDocumentTypes.filter(doc => doc.enabled).map(docType => (
+                        <option key={docType.id} value={docType.id}>
+                          {docType.label}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="form-help">
+                      Select the type of identity document being provided
+                      {settings.membership.idDocumentTypes.filter(doc => doc.enabled).length === 1 && 
+                        ` (Only ${settings.membership.idDocumentTypes.find(doc => doc.enabled)?.label} is configured)`
+                      }
+                    </small>
+                  </div>
 
-              <div className="form-group">
-                <label className="form-label">
-                  {settings?.membership?.idNumber || 'ID Number'}
-                </label>
-                <input
-                  type="text"
-                  name="idNumber"
-                  className="form-control"
-                  value={formData.idNumber}
-                  onChange={handleChange}
-                  placeholder="Enter ID number"
-                />
-                <small className="form-help">
-                  {formData.idDocumentType && settings?.membership?.idDocumentTypes ? 
-                    `Enter ${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'ID'} number` : 
-                    'Enter ID document number'
-                  }
-                </small>
-              </div>
+                  <div className="form-group">
+                    <label className="form-label">
+                      {formData.idDocumentType && settings?.membership?.idDocumentTypes ? 
+                        `${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'Document'} Number *` : 
+                        'Document Number *'
+                      }
+                    </label>
+                    <input
+                      type="text"
+                      name="idNumber"
+                      className="form-control"
+                      value={formData.idNumber}
+                      onChange={handleChange}
+                      placeholder={
+                        formData.idDocumentType && settings?.membership?.idDocumentTypes ? 
+                          `Enter ${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'document'} number` :
+                          'Enter document number'
+                      }
+                      required={formData.idDocumentType ? true : false}
+                    />
+                    <small className="form-help">
+                      {formData.idDocumentType && settings?.membership?.idDocumentTypes ? 
+                        `Enter ${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'document'} number` : 
+                        'Enter identity document number'
+                      }
+                    </small>
+                  </div>
+                </>
+              ) : (
+                <div className="no-documents-message">
+                  <div className="alert alert-warning">
+                    <strong>⚠️ No Document Types Configured</strong>
+                    <p>No identity document types are currently enabled in settings. Members can be added without identity documents, but it's recommended to configure at least one document type.</p>
+                    <small>Go to Settings → Member Settings → Document Selection to enable document types.</small>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="form-section">

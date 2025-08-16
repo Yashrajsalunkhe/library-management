@@ -142,18 +142,51 @@ const Settings = () => {
     loadCustomPlans();
   }, []);
 
+  // Initialize document types if missing
+  useEffect(() => {
+    if (settings?.membership && (!settings.membership.idDocumentTypes || settings.membership.idDocumentTypes.length === 0)) {
+      const defaultTypes = [
+        { id: 'aadhar', label: 'Aadhar Card', enabled: true },
+        { id: 'pan', label: 'PAN Card', enabled: true },
+        { id: 'driving_license', label: 'Driving License', enabled: true },
+        { id: 'passport', label: 'Passport', enabled: true },
+        { id: 'voter_id', label: 'Voter ID', enabled: false },
+        { id: 'other_govt', label: 'Other Government Document', enabled: true }
+      ];
+      handleSettingChange('membership', 'idDocumentTypes', defaultTypes);
+    }
+  }, [settings?.membership]);
+
   const loadSettings = async () => {
     setLoading(true);
     try {
       if (window.api?.settings?.getSettings) {
         const response = await window.api.settings.getSettings();
         if (response && response.success && response.settings) {
+          console.log('Loaded settings:', response.settings); // Debug log
           setSettings(prev => ({ ...prev, ...response.settings }));
+        } else {
+          console.log('No settings found, using defaults'); // Debug log
+          // Ensure default document types are set if no settings exist
+          setSettings(prev => ({
+            ...prev,
+            membership: {
+              ...prev.membership,
+              idDocumentTypes: prev.membership.idDocumentTypes || [
+                { id: 'aadhar', label: 'Aadhar Card', enabled: true },
+                { id: 'pan', label: 'PAN Card', enabled: true },
+                { id: 'driving_license', label: 'Driving License', enabled: true },
+                { id: 'passport', label: 'Passport', enabled: true },
+                { id: 'voter_id', label: 'Voter ID', enabled: false },
+                { id: 'other_govt', label: 'Other Government Document', enabled: true }
+              ]
+            }
+          }));
         }
       }
     } catch (error) {
       console.error('Error loading settings:', error);
-      showNotification('Failed to load settings', 'error');
+      error('Failed to load settings');
     } finally {
       setLoading(false);
     }
@@ -187,28 +220,28 @@ const Settings = () => {
   // Holiday management functions
   const addHoliday = () => {
     if (!newHoliday.date || !newHoliday.name) {
-      showNotification('Please enter both date and holiday name', 'error');
+      error('Please enter both date and holiday name');
       return;
     }
 
     const holidays = settings?.general?.holidays || [];
     const existingHoliday = holidays.find(h => h.date === newHoliday.date);
     if (existingHoliday) {
-      showNotification('Holiday already exists for this date', 'error');
+      error('Holiday already exists for this date');
       return;
     }
 
     const updatedHolidays = [...holidays, { ...newHoliday, id: Date.now() }];
     handleSettingChange('general', 'holidays', updatedHolidays);
     setNewHoliday({ date: '', name: '' });
-    showNotification('Holiday added successfully', 'success');
+    success('Holiday added successfully');
   };
 
   const removeHoliday = (holidayId) => {
     const holidays = settings?.general?.holidays || [];
     const updatedHolidays = holidays.filter(h => h.id !== holidayId);
     handleSettingChange('general', 'holidays', updatedHolidays);
-    showNotification('Holiday removed successfully', 'success');
+    success('Holiday removed successfully');
   };
 
   // Logo handling functions
@@ -216,13 +249,13 @@ const Settings = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        showNotification('Logo file size should be less than 5MB', 'error');
+        error('Logo file size should be less than 5MB');
         return;
       }
 
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        showNotification('Please upload a valid image file (JPEG, PNG, GIF, WebP)', 'error');
+        error('Please upload a valid image file (JPEG, PNG, GIF, WebP)');
         return;
       }
 
@@ -242,7 +275,7 @@ const Settings = () => {
     setLogoFile(null);
     setLogoPreview(null);
     handleSettingChange('general', 'logo', null);
-    showNotification('Logo removed successfully', 'success');
+    success('Logo removed successfully');
   };
 
   const saveSettings = async () => {
@@ -252,17 +285,21 @@ const Settings = () => {
       const operatingHours = settings?.general?.operatingHours || {};
       const { dayShift = {}, nightShift = {}, enableNightShift = false } = operatingHours;
       if (dayShift.openTime >= dayShift.closeTime && !enableNightShift) {
-        showNotification('Day shift opening time must be before closing time', 'error');
+        error('Day shift opening time must be before closing time');
         setLoading(false);
         return;
       }
 
       // Validate total seats
-      if (parseInt(settings.general.totalSeats) <= 0) {
-        error('Total seats must be greater than 0');
+      const totalSeats = parseInt(settings.general.totalSeats);
+      if (isNaN(totalSeats) || totalSeats <= 0) {
+        error('Total seats must be a valid number greater than 0');
         setLoading(false);
         return;
       }
+
+      // Ensure totalSeats is stored as a string for consistency with other settings
+      settings.general.totalSeats = totalSeats.toString();
 
       // Validate payment plans (only if plans exist)
       const customPlans = settings?.payment?.customPlans || [];
@@ -274,6 +311,21 @@ const Settings = () => {
         
         if (invalidPlans.length > 0) {
           error('All payment plans must have valid name, amount, and days');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Validate document types - at least one should be enabled for better UX
+      const enabledDocuments = settings?.membership?.idDocumentTypes?.filter(doc => doc.enabled) || [];
+      if (enabledDocuments.length === 0) {
+        const shouldContinue = confirm(
+          'No document types are enabled for member registration. ' +
+          'This means members can be added without providing identity documents. ' +
+          'Do you want to continue saving these settings?'
+        );
+        
+        if (!shouldContinue) {
           setLoading(false);
           return;
         }
@@ -375,7 +427,7 @@ const Settings = () => {
           cloudProvider: 'none'
         }
       });
-      showNotification('Settings reset to defaults', 'info');
+      success('Settings reset to defaults');
     }
   };
 
@@ -384,11 +436,11 @@ const Settings = () => {
     try {
       if (window.api?.backup?.createBackup) {
         await window.api.backup.createBackup();
-        showNotification('Backup created successfully', 'success');
+        success('Backup created successfully');
       }
     } catch (error) {
       console.error('Error creating backup:', error);
-      showNotification('Failed to create backup', 'error');
+      error('Failed to create backup');
     } finally {
       setLoading(false);
     }
@@ -400,11 +452,11 @@ const Settings = () => {
       try {
         if (window.api?.backup?.restoreBackup) {
           await window.api.backup.restoreBackup();
-          showNotification('Backup restored successfully', 'success');
+          success('Backup restored successfully');
         }
       } catch (error) {
         console.error('Error restoring backup:', error);
-        showNotification('Failed to restore backup', 'error');
+        error('Failed to restore backup');
       } finally {
         setLoading(false);
       }
@@ -416,11 +468,11 @@ const Settings = () => {
     try {
       if (window.api?.data?.exportData) {
         await window.api.data.exportData();
-        showNotification('Data exported successfully', 'success');
+        success('Data exported successfully');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      showNotification('Failed to export data', 'error');
+      error('Failed to export data');
     } finally {
       setLoading(false);
     }
@@ -428,7 +480,7 @@ const Settings = () => {
 
   const tabs = [
     { id: 'general', label: 'General Settings', icon: '⚙️' },
-    { id: 'membership', label: 'Member Settings', icon: '👥' },
+    { id: 'membership', label: 'Member Registration', icon: '👥' },
     { id: 'attendance', label: 'Attendance', icon: '📅' },
     { id: 'payment', label: 'Payment', icon: '💰' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
@@ -444,7 +496,7 @@ const Settings = () => {
           <label>Study Room Name *</label>
           <input
             type="text"
-            value={settings?.general?.libraryName || ''}
+            value={settings?.general?.libraryName ?? ''}
             onChange={(e) => handleSettingChange('general', 'libraryName', e.target.value)}
             className="form-control"
             placeholder="Enter your study room business name"
@@ -455,12 +507,12 @@ const Settings = () => {
           <label>Total Seats *</label>
           <input
             type="number"
-            value={settings?.general?.totalSeats || '50'}
+            value={settings?.general?.totalSeats ?? ''}
             onChange={(e) => handleSettingChange('general', 'totalSeats', e.target.value)}
             className="form-control"
             min="1"
             max="500"
-            placeholder="Total number of seats available"
+            placeholder="Total number of seats available (default: 50)"
             required
           />
           <small className="form-help">This value is applied system-wide for seat allocation</small>
@@ -468,7 +520,7 @@ const Settings = () => {
         <div className="form-group">
           <label>Address</label>
           <textarea
-            value={settings.general.address}
+            value={settings.general.address ?? ''}
             onChange={(e) => handleSettingChange('general', 'address', e.target.value)}
             className="form-control"
             rows="3"
@@ -479,7 +531,7 @@ const Settings = () => {
           <label>Phone</label>
           <input
             type="tel"
-            value={settings.general.phone}
+            value={settings.general.phone ?? ''}
             onChange={(e) => handleSettingChange('general', 'phone', e.target.value)}
             className="form-control"
             placeholder="Contact phone number"
@@ -489,7 +541,7 @@ const Settings = () => {
           <label>Email</label>
           <input
             type="email"
-            value={settings.general.email}
+            value={settings.general.email ?? ''}
             onChange={(e) => handleSettingChange('general', 'email', e.target.value)}
             className="form-control"
             placeholder="Business email address"
@@ -499,7 +551,7 @@ const Settings = () => {
           <label>Website</label>
           <input
             type="url"
-            value={settings.general.website}
+            value={settings.general.website ?? ''}
             onChange={(e) => handleSettingChange('general', 'website', e.target.value)}
             className="form-control"
             placeholder="https://yourwebsite.com"
@@ -533,12 +585,12 @@ const Settings = () => {
               <div className="time-input-group">
                 <input
                   type="time"
-                  value={convertTo12Hour(settings?.general?.operatingHours?.dayShift?.openTime).time}
+                  value={convertTo12Hour(settings?.general?.operatingHours?.dayShift?.openTime)?.time ?? ''}
                   onChange={(e) => handleTimeChange('dayShift', 'openTime', e.target.value, convertTo12Hour(settings?.general?.operatingHours?.dayShift?.openTime).period)}
                   className="form-control"
                 />
                 <select
-                  value={convertTo12Hour(settings?.general?.operatingHours?.dayShift?.openTime).period}
+                  value={convertTo12Hour(settings?.general?.operatingHours?.dayShift?.openTime)?.period ?? ''}
                   onChange={(e) => handleTimeChange('dayShift', 'openTime', convertTo12Hour(settings?.general?.operatingHours?.dayShift?.openTime).time, e.target.value)}
                   className="form-control"
                 >
@@ -552,12 +604,12 @@ const Settings = () => {
               <div className="time-input-group">
                 <input
                   type="time"
-                  value={convertTo12Hour(settings?.general?.operatingHours?.dayShift?.closeTime).time}
+                  value={convertTo12Hour(settings?.general?.operatingHours?.dayShift?.closeTime)?.time ?? ''}
                   onChange={(e) => handleTimeChange('dayShift', 'closeTime', e.target.value, convertTo12Hour(settings?.general?.operatingHours?.dayShift?.closeTime).period)}
                   className="form-control"
                 />
                 <select
-                  value={convertTo12Hour(settings?.general?.operatingHours?.dayShift?.closeTime).period}
+                  value={convertTo12Hour(settings?.general?.operatingHours?.dayShift?.closeTime)?.period ?? ''}
                   onChange={(e) => handleTimeChange('dayShift', 'closeTime', convertTo12Hour(settings?.general?.operatingHours?.dayShift?.closeTime).time, e.target.value)}
                   className="form-control"
                 >
@@ -578,12 +630,12 @@ const Settings = () => {
                 <div className="time-input-group">
                   <input
                     type="time"
-                    value={convertTo12Hour(settings?.general?.operatingHours?.nightShift?.openTime).time}
+                    value={convertTo12Hour(settings?.general?.operatingHours?.nightShift?.openTime)?.time ?? ''}
                     onChange={(e) => handleTimeChange('nightShift', 'openTime', e.target.value, convertTo12Hour(settings?.general?.operatingHours?.nightShift?.openTime).period)}
                     className="form-control"
                   />
                   <select
-                    value={convertTo12Hour(settings?.general?.operatingHours?.nightShift?.openTime).period}
+                    value={convertTo12Hour(settings?.general?.operatingHours?.nightShift?.openTime)?.period ?? ''}
                     onChange={(e) => handleTimeChange('nightShift', 'openTime', convertTo12Hour(settings?.general?.operatingHours?.nightShift?.openTime).time, e.target.value)}
                     className="form-control"
                   >
@@ -597,12 +649,12 @@ const Settings = () => {
                 <div className="time-input-group">
                   <input
                     type="time"
-                    value={convertTo12Hour(settings?.general?.operatingHours?.nightShift?.closeTime).time}
+                    value={convertTo12Hour(settings?.general?.operatingHours?.nightShift?.closeTime)?.time ?? ''}
                     onChange={(e) => handleTimeChange('nightShift', 'closeTime', e.target.value, convertTo12Hour(settings?.general?.operatingHours?.nightShift?.closeTime).period)}
                     className="form-control"
                   />
                   <select
-                    value={convertTo12Hour(settings?.general?.operatingHours?.nightShift?.closeTime).period}
+                    value={convertTo12Hour(settings?.general?.operatingHours?.nightShift?.closeTime)?.period ?? ''}
                     onChange={(e) => handleTimeChange('nightShift', 'closeTime', convertTo12Hour(settings?.general?.operatingHours?.nightShift?.closeTime).time, e.target.value)}
                     className="form-control"
                   >
@@ -813,9 +865,13 @@ const Settings = () => {
     </div>
   );
 
-  const renderMembershipSettings = () => (
+  const renderMembershipSettings = () => {
+    return (
     <div className="settings-section">
-      <h3>👤 Member Settings</h3>
+      <h3>� Member Registration Settings</h3>
+      <p className="section-description">
+        Configure member registration requirements including required documents and default settings.
+      </p>
       <div className="form-grid">
         {/* <div className="form-group">
           <label>ID Number Field Label</label>
@@ -862,30 +918,115 @@ const Settings = () => {
       </div>
 
       <div className="id-document-types">
-        <h4>Available ID Document Types</h4>
-        <p className="section-description">Configure which document types are available when adding new members</p>
+        <div className="document-header">
+          <h4>📄 Document Selection for Member Registration</h4>
+          <div className="document-actions">
+            <button 
+              type="button" 
+              className="button button-secondary button-sm"
+              onClick={() => {
+                const updatedTypes = settings.membership.idDocumentTypes.map(doc => ({ ...doc, enabled: true }));
+                handleSettingChange('membership', 'idDocumentTypes', updatedTypes);
+              }}
+            >
+              Enable All
+            </button>
+            <button 
+              type="button" 
+              className="button button-secondary button-sm"
+              onClick={() => {
+                const updatedTypes = settings.membership.idDocumentTypes.map(doc => ({ ...doc, enabled: false }));
+                handleSettingChange('membership', 'idDocumentTypes', updatedTypes);
+              }}
+            >
+              Disable All
+            </button>
+          </div>
+        </div>
+        <p className="section-description">
+          Select which document types should appear in the "Add New Member" form. 
+          Only enabled documents will be available for selection during member registration.
+        </p>
         
         <div className="document-types-grid">
-          {(settings?.membership?.idDocumentTypes || []).map((docType, index) => (
-            <div key={docType.id} className="document-type-item">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={docType.enabled}
-                  onChange={(e) => {
-                    const updatedTypes = [...settings.membership.idDocumentTypes];
-                    updatedTypes[index].enabled = e.target.checked;
-                    handleSettingChange('membership', 'idDocumentTypes', updatedTypes);
-                  }}
-                />
-                {docType.label}
-              </label>
+          {(settings?.membership?.idDocumentTypes || []).length === 0 ? (
+            <div className="no-document-types">
+              <p>No document types found. Initializing default types...</p>
+              <button 
+                type="button" 
+                className="button button-primary"
+                onClick={() => {
+                  const defaultTypes = [
+                    { id: 'aadhar', label: 'Aadhar Card', enabled: true },
+                    { id: 'pan', label: 'PAN Card', enabled: true },
+                    { id: 'driving_license', label: 'Driving License', enabled: true },
+                    { id: 'passport', label: 'Passport', enabled: true },
+                    { id: 'voter_id', label: 'Voter ID', enabled: false },
+                    { id: 'other_govt', label: 'Other Government Document', enabled: true }
+                  ];
+                  handleSettingChange('membership', 'idDocumentTypes', defaultTypes);
+                }}
+              >
+                Initialize Document Types
+              </button>
             </div>
-          ))}
+          ) : (
+            (settings.membership.idDocumentTypes).map((docType, index) => (
+              <div key={docType.id} className={`document-type-item ${docType.enabled ? 'enabled' : 'disabled'}`}>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={docType.enabled}
+                    onChange={(e) => {
+                      const updatedTypes = [...settings.membership.idDocumentTypes];
+                      updatedTypes[index].enabled = e.target.checked;
+                      handleSettingChange('membership', 'idDocumentTypes', updatedTypes);
+                    }}
+                  />
+                  <span className="document-label">
+                    {docType.label}
+                    {docType.enabled && <span className="status-badge">✓ Enabled</span>}
+                  </span>
+                </label>
+                <small className="document-help">
+                  {docType.enabled 
+                    ? 'Will appear in member registration form' 
+                    : 'Hidden from member registration form'
+                  }
+                </small>
+              </div>
+            ))
+          )}
+        </div>
+        
+        <div className="settings-preview">
+          <h5>🔍 Preview: Selected Documents</h5>
+          <div className="preview-stats">
+            <span className="stat-badge">
+              {(settings?.membership?.idDocumentTypes || []).filter(doc => doc.enabled).length} of {(settings?.membership?.idDocumentTypes || []).length} enabled
+            </span>
+          </div>
+          <div className="enabled-documents">
+            {(settings?.membership?.idDocumentTypes || [])
+              .filter(doc => doc.enabled)
+              .map(doc => (
+                <span key={doc.id} className="preview-badge">
+                  {doc.label}
+                </span>
+              ))
+            }
+            {(settings?.membership?.idDocumentTypes || []).filter(doc => doc.enabled).length === 0 && (
+              <span className="no-documents">⚠️ No documents selected. Members won't be able to provide ID documents.</span>
+            )}
+          </div>
+          <small className="preview-help">
+            These are the document types that will appear in the member registration dropdown.
+          </small>
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderAttendanceSettings = () => (
     <div className="settings-section">
@@ -1113,7 +1254,7 @@ const Settings = () => {
                     <label>Plan Name *</label>
                     <input
                       type="text"
-                      value={plan.name || 'New Plan'}
+                      value={plan.name ?? ''}
                       onChange={(e) => updatePlan(plan.id, 'name', e.target.value)}
                       className="form-control"
                       placeholder="e.g., Monthly Plan, Student Plan"
@@ -1125,12 +1266,12 @@ const Settings = () => {
                     <label>Amount (₹) *</label>
                     <input
                       type="number"
-                      value={plan.amount || plan.price || '1000'}
+                      value={plan.amount ?? plan.price ?? ''}
                       onChange={(e) => updatePlan(plan.id, 'amount', e.target.value)}
                       className="form-control"
                       min="1"
                       step="50"
-                      placeholder="Plan amount"
+                      placeholder="Plan amount (default: 1000)"
                       required
                     />
                   </div>
@@ -1139,11 +1280,11 @@ const Settings = () => {
                     <label>Duration (Days) *</label>
                     <input
                       type="number"
-                      value={plan.days || plan.duration_days || '30'}
+                      value={plan.days ?? plan.duration_days ?? ''}
                       onChange={(e) => updatePlan(plan.id, 'days', e.target.value)}
                       className="form-control"
                       min="1"
-                      placeholder="Number of days"
+                      placeholder="Number of days (default: 30)"
                       required
                     />
                   </div>
@@ -1152,7 +1293,7 @@ const Settings = () => {
                     <label>Description</label>
                     <input
                       type="text"
-                      value={plan.description}
+                      value={plan.description ?? ''}
                       onChange={(e) => updatePlan(plan.id, 'description', e.target.value)}
                       className="form-control"
                       placeholder="Brief description of the plan"

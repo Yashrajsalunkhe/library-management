@@ -87,6 +87,10 @@ module.exports = (ipcMain) => {
   ipcMain.handle('member:add', async (event, member) => {
     try {
       const result = transaction(() => {
+        // Get total seats from settings
+        const totalSeatsRecord = get('SELECT value FROM settings WHERE key = ?', ['general.totalSeats']);
+        const totalSeats = totalSeatsRecord ? parseInt(totalSeatsRecord.value) : 50; // Default to 50 if not set
+        
         // Generate QR code data
         const qrData = `LMS-${Date.now()}`;
         
@@ -104,9 +108,27 @@ module.exports = (ipcMain) => {
             }
             nextSeat++;
           }
+          
+          // Check if next seat exceeds total seats
+          if (nextSeat > totalSeats) {
+            throw new Error(`Cannot allocate seat. All ${totalSeats} seats are occupied.`);
+          }
+          
           seatNo = nextSeat.toString();
         } else {
           // Validate manually entered seat number
+          const seatNumber = parseInt(seatNo.trim());
+          
+          // Check if seat number is valid
+          if (isNaN(seatNumber) || seatNumber <= 0) {
+            throw new Error('Seat number must be a positive number');
+          }
+          
+          // Check if seat number exceeds total seats
+          if (seatNumber > totalSeats) {
+            throw new Error(`Seat number cannot exceed total seats (${totalSeats})`);
+          }
+          
           const existingMember = get('SELECT id FROM members WHERE seat_no = ?', [seatNo.trim()]);
           if (existingMember) {
             throw new Error(`Seat number ${seatNo} is already taken`);
@@ -147,6 +169,10 @@ module.exports = (ipcMain) => {
 
   ipcMain.handle('member:getNextSeatNumber', async (event) => {
     try {
+      // Get total seats from settings
+      const totalSeatsRecord = get('SELECT value FROM settings WHERE key = ?', ['general.totalSeats']);
+      const totalSeats = totalSeatsRecord ? parseInt(totalSeatsRecord.value) : 50; // Default to 50 if not set
+      
       const existingSeats = query('SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)');
       const seatNumbers = existingSeats.map(s => parseInt(s.seat_no)).filter(n => !isNaN(n));
       
@@ -156,6 +182,14 @@ module.exports = (ipcMain) => {
           break;
         }
         nextSeat++;
+      }
+      
+      // Check if next seat exceeds total seats
+      if (nextSeat > totalSeats) {
+        return { 
+          success: false, 
+          message: `All seats are occupied. Total available seats: ${totalSeats}` 
+        };
       }
       
       return { success: true, data: nextSeat.toString() };
@@ -168,6 +202,30 @@ module.exports = (ipcMain) => {
     try {
       if (!seatNo || seatNo.trim() === '') {
         return { success: true, available: true };
+      }
+
+      const seatNumber = parseInt(seatNo.trim());
+      
+      // Check if seat number is valid (positive integer)
+      if (isNaN(seatNumber) || seatNumber <= 0) {
+        return { 
+          success: true, 
+          available: false,
+          message: 'Seat number must be a positive number'
+        };
+      }
+
+      // Get total seats from settings
+      const totalSeatsRecord = get('SELECT value FROM settings WHERE key = ?', ['general.totalSeats']);
+      const totalSeats = totalSeatsRecord ? parseInt(totalSeatsRecord.value) : 50; // Default to 50 if not set
+      
+      // Check if seat number exceeds total seats
+      if (seatNumber > totalSeats) {
+        return { 
+          success: true, 
+          available: false,
+          message: `Seat number cannot exceed total seats (${totalSeats})`
+        };
       }
 
       let sql = 'SELECT id FROM members WHERE seat_no = ?';
@@ -185,6 +243,36 @@ module.exports = (ipcMain) => {
         success: true, 
         available: !existingMember,
         message: existingMember ? `Seat number ${seatNo} is already taken` : null
+      };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('member:getSeatStats', async (event) => {
+    try {
+      // Get total seats from settings
+      const totalSeatsRecord = get('SELECT value FROM settings WHERE key = ?', ['general.totalSeats']);
+      const totalSeats = totalSeatsRecord ? parseInt(totalSeatsRecord.value) : 50;
+      
+      // Count occupied seats (active members with seat numbers)
+      const occupiedSeatsResult = get('SELECT COUNT(*) as count FROM members WHERE seat_no IS NOT NULL AND seat_no != "" AND status = "active"');
+      const occupiedSeats = occupiedSeatsResult ? occupiedSeatsResult.count : 0;
+      
+      // Calculate available seats
+      const availableSeats = Math.max(0, totalSeats - occupiedSeats);
+      
+      // Calculate utilization percentage
+      const utilizationPercentage = totalSeats > 0 ? Math.round((occupiedSeats / totalSeats) * 100) : 0;
+      
+      return { 
+        success: true, 
+        data: {
+          totalSeats,
+          occupiedSeats,
+          availableSeats,
+          utilizationPercentage
+        }
       };
     } catch (error) {
       return { success: false, message: error.message };

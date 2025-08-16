@@ -151,505 +151,16 @@ SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', p
         WHERE DATE(a.check_in) = '2025-08-16'
         ORDER BY a.check_in DESC
       
-[7591:0816/200359.548335:ERROR:CONSOLE:1] "Request Autofill.enable failed. {"code":-32601,"message":"'Autofill.enable' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
-[7591:0816/200359.548430:ERROR:CONSOLE:1] "Request Autofill.setAddresses failed. {"code":-32601,"message":"'Autofill.setAddresses' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
+[14089:0816/205819.572566:ERROR:CONSOLE:1] "Request Autofill.enable failed. {"code":-32601,"message":"'Autofill.enable' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
+[14089:0816/205819.572664:ERROR:CONSOLE:1] "Request Autofill.setAddresses failed. {"code":-32601,"message":"'Autofill.setAddresses' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
+SELECT * FROM settings
+SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
+SELECT * FROM membership_plans ORDER BY created_at DESC
 Forcing window to show...
-[7628:0816/200406.009731:ERROR:ui/gl/gl_surface_presentation_helper.cc:260] GetVSyncParametersIfAvailable() failed for 1 times!
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY m.created_at DESC
-SELECT * FROM membership_plans ORDER BY created_at DESC
-SELECT * FROM settings
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY m.created_at DESC
-SELECT * FROM membership_plans ORDER BY created_at DESC
-SELECT * FROM settings
-
-        SELECT p.*, m.name as member_name, mp.name as plan_name
-        FROM payments p
-        LEFT JOIN members m ON p.member_id = m.id
-        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY p.paid_at DESC
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       AND m.status = 'active' ORDER BY m.created_at DESC
-SELECT * FROM membership_plans ORDER BY created_at DESC
-
-        SELECT p.*, m.name as member_name, mp.name as plan_name
-        FROM payments p
-        LEFT JOIN members m ON p.member_id = m.id
-        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY p.paid_at DESC
-
-        SELECT p.*, m.name as member_name, mp.name as plan_name
-        FROM payments p
-        LEFT JOIN members m ON p.member_id = m.id
-        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY p.paid_at DESC
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       AND m.status = 'active' ORDER BY m.created_at DESC
-SELECT * FROM membership_plans ORDER BY created_at DESC
-
-        SELECT p.*, m.name as member_name, mp.name as plan_name
-        FROM payments p
-        LEFT JOIN members m ON p.member_id = m.id
-        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY p.paid_at DESC
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY m.created_at DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY m.created_at DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-[7628:0816/200409.586482:ERROR:ui/gl/gl_surface_presentation_helper.cc:260] GetVSyncParametersIfAvailable() failed for 2 times!
-[7628:0816/200412.396607:ERROR:ui/gl/gl_surface_presentation_helper.cc:260] GetVSyncParametersIfAvailable() failed for 3 times!
-SELECT * FROM settings
-SELECT * FROM membership_plans ORDER BY created_at DESC
-SELECT * FROM settings
-SELECT * FROM membership_plans ORDER BY created_at DESC
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 13.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 13.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 13.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 13.0
-      
-DELETE FROM membership_plans WHERE id = 13.0
-
-        INSERT INTO membership_plans (name, duration_days, price, description)
-        VALUES ('New Plan', 30.0, 1000.0, 'Custom membership plan')
-      
-SELECT * FROM membership_plans ORDER BY created_at DESC
-
-        UPDATE membership_plans 
-        SET name = 'New Plan', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'New Pla', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'New Pl', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'New P', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'New ', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'New', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Ne', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'N', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'NA', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'A', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'An', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anu', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anua', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anual', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = 1000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '100', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '10', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '1', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '1', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '1', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '1', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '1', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '1', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '1', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '12', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '120', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '1200', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = 30.0, price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '3', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '36', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '365', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '364', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '363', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '362', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '361', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '360', price = '12000', description = 'Custom membership plan'
-        WHERE id = 14.0
-      
+[14126:0816/205822.643867:ERROR:ui/gl/gl_surface_presentation_helper.cc:260] GetVSyncParametersIfAvailable() failed for 1 times!
+[14126:0816/205822.649699:ERROR:ui/gl/gl_surface_presentation_helper.cc:260] GetVSyncParametersIfAvailable() failed for 2 times!
+[14126:0816/205824.997563:ERROR:ui/gl/gl_surface_presentation_helper.cc:260] GetVSyncParametersIfAvailable() failed for 3 times!
 BEGIN
 DELETE FROM settings
 INSERT INTO settings (key, value) VALUES ('general.libraryName', 'Library Management System')
@@ -661,7 +172,7 @@ INSERT INTO settings (key, value) VALUES ('general.autoBackup', 'true')
 INSERT INTO settings (key, value) VALUES ('general.backupInterval', '24')
 INSERT INTO settings (key, value) VALUES ('general.theme', 'light')
 INSERT INTO settings (key, value) VALUES ('general.language', 'en')
-INSERT INTO settings (key, value) VALUES ('general.totalSeats', '97')
+INSERT INTO settings (key, value) VALUES ('general.totalSeats', '110')
 INSERT INTO settings (key, value) VALUES ('membership.defaultMembershipDura'/*+4 bytes*/, '12')
 INSERT INTO settings (key, value) VALUES ('membership.membershipFee', '500')
 INSERT INTO settings (key, value) VALUES ('membership.lateFeePerDay', '10')
@@ -682,267 +193,7 @@ INSERT INTO settings (key, value) VALUES ('payment.autoGenerateReceipts', 'true'
 INSERT INTO settings (key, value) VALUES ('payment.acceptCash', 'true')
 INSERT INTO settings (key, value) VALUES ('payment.acceptOnline', 'false')
 INSERT INTO settings (key, value) VALUES ('payment.onlinePaymentGateway', 'none')
-INSERT INTO settings (key, value) VALUES ('payment.customPlans', '[{"id":14,"name":"Anuall ","dura'/*+293 bytes*/)
-INSERT INTO settings (key, value) VALUES ('notifications.enableDesktopNotif'/*+8 bytes*/, 'true')
-INSERT INTO settings (key, value) VALUES ('notifications.enableEmailNotific'/*+6 bytes*/, 'false')
-INSERT INTO settings (key, value) VALUES ('notifications.enableSMSNotificat'/*+4 bytes*/, 'false')
-INSERT INTO settings (key, value) VALUES ('notifications.membershipExpiryRe'/*+6 bytes*/, 'true')
-INSERT INTO settings (key, value) VALUES ('notifications.reminderDaysBefore', '7')
-INSERT INTO settings (key, value) VALUES ('notifications.birthdayWishes', 'true')
-INSERT INTO settings (key, value) VALUES ('security.sessionTimeout', '60')
-INSERT INTO settings (key, value) VALUES ('security.requirePasswordChange', 'false')
-INSERT INTO settings (key, value) VALUES ('security.passwordChangeInterval', '90')
-INSERT INTO settings (key, value) VALUES ('security.enableBiometric', 'false')
-INSERT INTO settings (key, value) VALUES ('security.twoFactorAuth', 'false')
-INSERT INTO settings (key, value) VALUES ('security.logUserActions', 'true')
-INSERT INTO settings (key, value) VALUES ('backup.autoBackup', 'true')
-INSERT INTO settings (key, value) VALUES ('backup.backupLocation', 'local')
-INSERT INTO settings (key, value) VALUES ('backup.backupFrequency', 'daily')
-INSERT INTO settings (key, value) VALUES ('backup.keepBackupsFor', '30')
-INSERT INTO settings (key, value) VALUES ('backup.cloudBackup', 'false')
-INSERT INTO settings (key, value) VALUES ('backup.cloudProvider', 'none')
-INSERT INTO settings (key, value) VALUES ('settings.general', '{"libraryName":"Library Manageme'/*+129 bytes*/)
-INSERT INTO settings (key, value) VALUES ('settings.membership', '{"defaultMembershipDuration":12,'/*+124 bytes*/)
-INSERT INTO settings (key, value) VALUES ('settings.attendance', '{"autoMarkAbsent":true,"absentAf'/*+86 bytes*/)
-INSERT INTO settings (key, value) VALUES ('settings.payment', '{"currency":"INR","allowPartialP'/*+135 bytes*/)
-INSERT INTO settings (key, value) VALUES ('settings.notifications', '{"enableDesktopNotifications":tr'/*+144 bytes*/)
-INSERT INTO settings (key, value) VALUES ('settings.security', '{"sessionTimeout":60,"requirePas'/*+115 bytes*/)
-INSERT INTO settings (key, value) VALUES ('settings.backup', '{"autoBackup":true,"backupLocati'/*+101 bytes*/)
-INSERT INTO settings (key, value) VALUES ('settings.settings', '{"general":{"libraryName":"Libra'/*+1384 bytes*/)
-COMMIT
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY m.created_at DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY m.created_at DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY m.created_at DESC
-SELECT * FROM membership_plans ORDER BY created_at DESC
-SELECT * FROM settings
-
-        SELECT m.*, mp.name as plan_name, mp.price as plan_price
-        FROM members m
-        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY m.created_at DESC
-SELECT * FROM membership_plans ORDER BY created_at DESC
-SELECT * FROM settings
-SELECT * FROM settings
-SELECT * FROM membership_plans ORDER BY created_at DESC
-SELECT * FROM settings
-SELECT * FROM membership_plans ORDER BY created_at DESC
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '36', price = 12000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '365', price = 12000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '364', price = 12000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '364', price = 12000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '363', price = 12000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-
-        UPDATE membership_plans 
-        SET name = 'Anuall ', duration_days = '362', price = 12000.0, description = 'Custom membership plan'
-        WHERE id = 14.0
-      
-BEGIN
-DELETE FROM settings
-INSERT INTO settings (key, value) VALUES ('general.libraryName', 'Library Management System')
-INSERT INTO settings (key, value) VALUES ('general.address', '')
-INSERT INTO settings (key, value) VALUES ('general.phone', '')
-INSERT INTO settings (key, value) VALUES ('general.email', '')
-INSERT INTO settings (key, value) VALUES ('general.website', '')
-INSERT INTO settings (key, value) VALUES ('general.autoBackup', 'true')
-INSERT INTO settings (key, value) VALUES ('general.backupInterval', '24')
-INSERT INTO settings (key, value) VALUES ('general.theme', 'light')
-INSERT INTO settings (key, value) VALUES ('general.language', 'en')
-INSERT INTO settings (key, value) VALUES ('general.totalSeats', '97')
-INSERT INTO settings (key, value) VALUES ('membership.defaultMembershipDura'/*+4 bytes*/, '12')
-INSERT INTO settings (key, value) VALUES ('membership.membershipFee', '500')
-INSERT INTO settings (key, value) VALUES ('membership.lateFeePerDay', '10')
-INSERT INTO settings (key, value) VALUES ('membership.maxBooksPerMember', '3')
-INSERT INTO settings (key, value) VALUES ('membership.maxRenewalDays', '15')
-INSERT INTO settings (key, value) VALUES ('membership.requireDeposit', 'false')
-INSERT INTO settings (key, value) VALUES ('membership.depositAmount', '200')
-INSERT INTO settings (key, value) VALUES ('attendance.autoMarkAbsent', 'true')
-INSERT INTO settings (key, value) VALUES ('attendance.absentAfterHours', '2')
-INSERT INTO settings (key, value) VALUES ('attendance.allowManualEdit', 'true')
-INSERT INTO settings (key, value) VALUES ('attendance.notifyOnAbsence', 'false')
-INSERT INTO settings (key, value) VALUES ('attendance.maxConsecutiveAbsence'/*+1 bytes*/, '7')
-INSERT INTO settings (key, value) VALUES ('attendance.autoCheckOutHours', '3')
-INSERT INTO settings (key, value) VALUES ('payment.currency', 'INR')
-INSERT INTO settings (key, value) VALUES ('payment.allowPartialPayments', 'true')
-INSERT INTO settings (key, value) VALUES ('payment.paymentReminderDays', '7')
-INSERT INTO settings (key, value) VALUES ('payment.autoGenerateReceipts', 'true')
-INSERT INTO settings (key, value) VALUES ('payment.acceptCash', 'true')
-INSERT INTO settings (key, value) VALUES ('payment.acceptOnline', 'false')
-INSERT INTO settings (key, value) VALUES ('payment.onlinePaymentGateway', 'none')
-INSERT INTO settings (key, value) VALUES ('payment.customPlans', '[{"id":14,"name":"Anuall ","amou'/*+187 bytes*/)
+INSERT INTO settings (key, value) VALUES ('payment.customPlans', '[{"id":14,"name":"Aualle","amoun'/*+148 bytes*/)
 INSERT INTO settings (key, value) VALUES ('notifications.enableDesktopNotif'/*+8 bytes*/, 'true')
 INSERT INTO settings (key, value) VALUES ('notifications.enableEmailNotific'/*+6 bytes*/, 'false')
 INSERT INTO settings (key, value) VALUES ('notifications.enableSMSNotificat'/*+4 bytes*/, 'false')
@@ -976,31 +227,94 @@ COMMIT
         LEFT JOIN membership_plans mp ON m.plan_id = mp.id
         WHERE 1=1
        ORDER BY m.created_at DESC
+SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
 
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
+        SELECT m.*, mp.name as plan_name, mp.price as plan_price
+        FROM members m
+        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
         WHERE 1=1
-       ORDER BY a.check_in DESC
+       ORDER BY m.created_at DESC
+SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '1'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '10'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '101'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '10'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '1'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '11'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '11'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '110'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '110'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '11'
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT id FROM members WHERE seat_no = '1'
 
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
-      
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
+        SELECT p.*, m.name as member_name, mp.name as plan_name
+        FROM payments p
+        LEFT JOIN members m ON p.member_id = m.id
+        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
         WHERE 1=1
-       ORDER BY a.check_in DESC
+       ORDER BY p.paid_at DESC
 
-        SELECT a.*, m.name as member_name, m.phone
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE DATE(a.check_in) = '2025-08-16'
-        ORDER BY a.check_in DESC
+        SELECT m.*, mp.name as plan_name, mp.price as plan_price
+        FROM members m
+        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
+        WHERE 1=1
+       AND m.status = 'active' ORDER BY m.created_at DESC
+SELECT * FROM membership_plans ORDER BY created_at DESC
+
+        SELECT p.*, m.name as member_name, mp.name as plan_name
+        FROM payments p
+        LEFT JOIN members m ON p.member_id = m.id
+        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
+        WHERE 1=1
+       ORDER BY p.paid_at DESC
+
+        SELECT p.*, m.name as member_name, mp.name as plan_name
+        FROM payments p
+        LEFT JOIN members m ON p.member_id = m.id
+        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
+        WHERE 1=1
+       ORDER BY p.paid_at DESC
+
+        SELECT m.*, mp.name as plan_name, mp.price as plan_price
+        FROM members m
+        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
+        WHERE 1=1
+       AND m.status = 'active' ORDER BY m.created_at DESC
+SELECT * FROM membership_plans ORDER BY created_at DESC
+
+        SELECT p.*, m.name as member_name, mp.name as plan_name
+        FROM payments p
+        LEFT JOIN members m ON p.member_id = m.id
+        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
+        WHERE 1=1
+       ORDER BY p.paid_at DESC
+SELECT * FROM settings
+SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
+SELECT * FROM membership_plans ORDER BY created_at DESC
+
+        UPDATE members 
+        SET status = 'expired', updated_at = CURRENT_TIMESTAMP
+        WHERE status = 'active' AND DATE(end_date) < DATE('now')
       
 
         SELECT m.*, mp.name as plan_name, mp.price as plan_price
@@ -1008,12 +322,41 @@ COMMIT
         LEFT JOIN membership_plans mp ON m.plan_id = mp.id
         WHERE 1=1
        ORDER BY m.created_at DESC
+SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
 
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
+        SELECT m.*, mp.name as plan_name, mp.price as plan_price
+        FROM members m
+        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
         WHERE 1=1
-       ORDER BY a.check_in DESC
+       ORDER BY m.created_at DESC
+SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)
+SELECT * FROM settings
+SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
+SELECT * FROM membership_plans ORDER BY created_at DESC
+Window ready to show, making visible...
+SELECT COUNT(*) as count FROM members WHERE status = 'active'
+SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
+SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
+SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
+
+          SELECT COUNT(*) as count FROM members 
+          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
+        
+SELECT COUNT(*) as count FROM members WHERE status = 'active'
+SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
+SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
+SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
+
+          SELECT COUNT(*) as count FROM members 
+          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
+        
 
         SELECT a.*, m.name as member_name, m.phone
         FROM attendance a
@@ -1022,117 +365,149 @@ COMMIT
         ORDER BY a.check_in DESC
       
 
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       ORDER BY a.check_in DESC
-
         SELECT a.*, m.name as member_name, m.phone
         FROM attendance a
         JOIN members m ON a.member_id = m.id
         WHERE DATE(a.check_in) = '2025-08-16'
         ORDER BY a.check_in DESC
       
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-SELECT COUNT(*) as count FROM members WHERE status = 'active'
-SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = '2025-08-16'
-SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime('%Y-%m', paid_at) = '2025-08'
-
-          SELECT COUNT(*) as count FROM members 
-          WHERE status = 'active' AND DATE(end_date) <= DATE('now', '+10 days')
-        
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT a.*, m.name as member_name
-        FROM attendance a
-        JOIN members m ON a.member_id = m.id
-        WHERE 1=1
-       AND DATE(a.check_in) >= '2025-07-31' AND DATE(a.check_in) <= '2025-08-30' ORDER BY a.check_in DESC
-
-        SELECT p.*, m.name as member_name, mp.name as plan_name
-        FROM payments p
-        LEFT JOIN members m ON p.member_id = m.id
-        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY p.paid_at DESC
+SELECT * FROM settings
+SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
+SELECT * FROM membership_plans ORDER BY created_at DESC
+BEGIN
+DELETE FROM settings
+INSERT INTO settings (key, value) VALUES ('general.libraryName', 'Library Management System')
+INSERT INTO settings (key, value) VALUES ('general.address', '')
+INSERT INTO settings (key, value) VALUES ('general.phone', '')
+INSERT INTO settings (key, value) VALUES ('general.email', '')
+INSERT INTO settings (key, value) VALUES ('general.website', '')
+INSERT INTO settings (key, value) VALUES ('general.autoBackup', 'true')
+INSERT INTO settings (key, value) VALUES ('general.backupInterval', '24')
+INSERT INTO settings (key, value) VALUES ('general.theme', 'light')
+INSERT INTO settings (key, value) VALUES ('general.language', 'en')
+INSERT INTO settings (key, value) VALUES ('general.totalSeats', '110')
+INSERT INTO settings (key, value) VALUES ('membership.defaultMembershipDura'/*+4 bytes*/, '12')
+INSERT INTO settings (key, value) VALUES ('membership.membershipFee', '500')
+INSERT INTO settings (key, value) VALUES ('membership.lateFeePerDay', '10')
+INSERT INTO settings (key, value) VALUES ('membership.maxBooksPerMember', '3')
+INSERT INTO settings (key, value) VALUES ('membership.maxRenewalDays', '15')
+INSERT INTO settings (key, value) VALUES ('membership.requireDeposit', 'false')
+INSERT INTO settings (key, value) VALUES ('membership.depositAmount', '200')
+INSERT INTO settings (key, value) VALUES ('membership.idDocumentTypes', '[{"id":"aadhar","label":"Aadhar '/*+315 bytes*/)
+INSERT INTO settings (key, value) VALUES ('attendance.autoMarkAbsent', 'true')
+INSERT INTO settings (key, value) VALUES ('attendance.absentAfterHours', '2')
+INSERT INTO settings (key, value) VALUES ('attendance.allowManualEdit', 'true')
+INSERT INTO settings (key, value) VALUES ('attendance.notifyOnAbsence', 'false')
+INSERT INTO settings (key, value) VALUES ('attendance.maxConsecutiveAbsence'/*+1 bytes*/, '7')
+INSERT INTO settings (key, value) VALUES ('attendance.autoCheckOutHours', '3')
+INSERT INTO settings (key, value) VALUES ('payment.currency', 'INR')
+INSERT INTO settings (key, value) VALUES ('payment.allowPartialPayments', 'true')
+INSERT INTO settings (key, value) VALUES ('payment.paymentReminderDays', '7')
+INSERT INTO settings (key, value) VALUES ('payment.autoGenerateReceipts', 'true')
+INSERT INTO settings (key, value) VALUES ('payment.acceptCash', 'true')
+INSERT INTO settings (key, value) VALUES ('payment.acceptOnline', 'false')
+INSERT INTO settings (key, value) VALUES ('payment.onlinePaymentGateway', 'none')
+INSERT INTO settings (key, value) VALUES ('payment.customPlans', '[{"id":14,"name":"Aualle","amoun'/*+148 bytes*/)
+INSERT INTO settings (key, value) VALUES ('notifications.enableDesktopNotif'/*+8 bytes*/, 'true')
+INSERT INTO settings (key, value) VALUES ('notifications.enableEmailNotific'/*+6 bytes*/, 'false')
+INSERT INTO settings (key, value) VALUES ('notifications.enableSMSNotificat'/*+4 bytes*/, 'false')
+INSERT INTO settings (key, value) VALUES ('notifications.membershipExpiryRe'/*+6 bytes*/, 'true')
+INSERT INTO settings (key, value) VALUES ('notifications.reminderDaysBefore', '7')
+INSERT INTO settings (key, value) VALUES ('notifications.birthdayWishes', 'true')
+INSERT INTO settings (key, value) VALUES ('security.sessionTimeout', '60')
+INSERT INTO settings (key, value) VALUES ('security.requirePasswordChange', 'false')
+INSERT INTO settings (key, value) VALUES ('security.passwordChangeInterval', '90')
+INSERT INTO settings (key, value) VALUES ('security.enableBiometric', 'false')
+INSERT INTO settings (key, value) VALUES ('security.twoFactorAuth', 'false')
+INSERT INTO settings (key, value) VALUES ('security.logUserActions', 'true')
+INSERT INTO settings (key, value) VALUES ('backup.autoBackup', 'true')
+INSERT INTO settings (key, value) VALUES ('backup.backupLocation', 'local')
+INSERT INTO settings (key, value) VALUES ('backup.backupFrequency', 'daily')
+INSERT INTO settings (key, value) VALUES ('backup.keepBackupsFor', '30')
+INSERT INTO settings (key, value) VALUES ('backup.cloudBackup', 'false')
+INSERT INTO settings (key, value) VALUES ('backup.cloudProvider', 'none')
+INSERT INTO settings (key, value) VALUES ('settings.general', '{"libraryName":"Library Manageme'/*+129 bytes*/)
+INSERT INTO settings (key, value) VALUES ('settings.membership', '{"defaultMembershipDuration":12,'/*+124 bytes*/)
+INSERT INTO settings (key, value) VALUES ('settings.attendance', '{"autoMarkAbsent":true,"absentAf'/*+86 bytes*/)
+INSERT INTO settings (key, value) VALUES ('settings.payment', '{"currency":"INR","allowPartialP'/*+135 bytes*/)
+INSERT INTO settings (key, value) VALUES ('settings.notifications', '{"enableDesktopNotifications":tr'/*+144 bytes*/)
+INSERT INTO settings (key, value) VALUES ('settings.security', '{"sessionTimeout":60,"requirePas'/*+115 bytes*/)
+INSERT INTO settings (key, value) VALUES ('settings.backup', '{"autoBackup":true,"backupLocati'/*+101 bytes*/)
+INSERT INTO settings (key, value) VALUES ('settings.settings', '{"general":{"libraryName":"Libra'/*+1384 bytes*/)
+COMMIT
 
         SELECT m.*, mp.name as plan_name, mp.price as plan_price
         FROM members m
         LEFT JOIN membership_plans mp ON m.plan_id = mp.id
         WHERE 1=1
-       AND m.status = 'active' ORDER BY m.created_at DESC
+       ORDER BY m.created_at DESC
 SELECT * FROM membership_plans ORDER BY created_at DESC
-
-        SELECT p.*, m.name as member_name, mp.name as plan_name
-        FROM payments p
-        LEFT JOIN members m ON p.member_id = m.id
-        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY p.paid_at DESC
-
-        SELECT p.*, m.name as member_name, mp.name as plan_name
-        FROM payments p
-        LEFT JOIN members m ON p.member_id = m.id
-        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
-        WHERE 1=1
-       ORDER BY p.paid_at DESC
+SELECT * FROM settings
 
         SELECT m.*, mp.name as plan_name, mp.price as plan_price
         FROM members m
         LEFT JOIN membership_plans mp ON m.plan_id = mp.id
         WHERE 1=1
-       AND m.status = 'active' ORDER BY m.created_at DESC
+       ORDER BY m.created_at DESC
 SELECT * FROM membership_plans ORDER BY created_at DESC
+SELECT * FROM settings
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)
+SELECT value FROM settings WHERE key = 'general.totalSeats'
+SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)
+SELECT status FROM members WHERE id = 18.0
+UPDATE members SET status = 'suspended' WHERE id = 18.0
 
-        SELECT p.*, m.name as member_name, mp.name as plan_name
-        FROM payments p
-        LEFT JOIN members m ON p.member_id = m.id
-        LEFT JOIN membership_plans mp ON p.plan_id = mp.id
+        SELECT m.*, mp.name as plan_name, mp.price as plan_price
+        FROM members m
+        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
         WHERE 1=1
-       ORDER BY p.paid_at DESC
-SELECT * FROM settings
-SELECT * FROM membership_plans ORDER BY created_at DESC
-SELECT * FROM settings
-SELECT * FROM membership_plans ORDER BY created_at DESC
+       ORDER BY m.created_at DESC
+SELECT status FROM members WHERE id = 17.0
+UPDATE members SET status = 'suspended' WHERE id = 17.0
+
+        SELECT m.*, mp.name as plan_name, mp.price as plan_price
+        FROM members m
+        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
+        WHERE 1=1
+       ORDER BY m.created_at DESC
+SELECT * FROM members WHERE id = 18.0
+BEGIN
+DELETE FROM notifications WHERE member_id = 18.0
+Deleted 0 notifications for member 18
+DELETE FROM attendance WHERE member_id = 18.0
+Deleted 0 attendance records for member 18
+SELECT COUNT(*) as count FROM payments WHERE member_id = 18.0
+Member 18 has 0 payment records that will be preserved
+DELETE FROM members WHERE id = 18.0
+Deleted member 18, affected rows: 1
+SELECT COUNT(*) as count FROM payments WHERE member_id IS NULL
+Total payment records with NULL member_id: 7
+COMMIT
+
+        SELECT m.*, mp.name as plan_name, mp.price as plan_price
+        FROM members m
+        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
+        WHERE 1=1
+       ORDER BY m.created_at DESC
+SELECT * FROM members WHERE id = 17.0
+BEGIN
+DELETE FROM notifications WHERE member_id = 17.0
+Deleted 0 notifications for member 17
+DELETE FROM attendance WHERE member_id = 17.0
+Deleted 2 attendance records for member 17
+SELECT COUNT(*) as count FROM payments WHERE member_id = 17.0
+Member 17 has 1 payment records that will be preserved
+DELETE FROM members WHERE id = 17.0
+Deleted member 17, affected rows: 1
+SELECT COUNT(*) as count FROM payments WHERE member_id IS NULL
+Total payment records with NULL member_id: 8
+COMMIT
+
+        SELECT m.*, mp.name as plan_name, mp.price as plan_price
+        FROM members m
+        LEFT JOIN membership_plans mp ON m.plan_id = mp.id
+        WHERE 1=1
+       ORDER BY m.created_at DESC
+/home/yashraj/YASHRAJ/library-management/node_modules/electron/dist/electron exited with signal SIGINT
