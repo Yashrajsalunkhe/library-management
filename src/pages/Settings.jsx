@@ -990,21 +990,45 @@ const Settings = () => {
         const planToUpdate = currentPlans.find(plan => plan.id === planId);
         if (!planToUpdate) return;
 
-        // Map Settings page fields to database fields
+        // Update the local state immediately for responsive UI
         const updatedPlan = { ...planToUpdate, [field]: value };
+        
+        // Map Settings page fields to database fields and ensure no null values
         const dbPlan = {
-          name: updatedPlan.name,
-          duration_days: updatedPlan.days,
-          price: updatedPlan.amount,
-          description: updatedPlan.description
+          name: updatedPlan.name || planToUpdate.name || 'New Plan',
+          duration_days: updatedPlan.days || updatedPlan.duration_days || 30,
+          price: updatedPlan.amount || updatedPlan.price || 1000,
+          description: updatedPlan.description || planToUpdate.description || 'Custom membership plan'
         };
+        
+        // Ensure required fields are not null or empty
+        if (!dbPlan.name || dbPlan.name.trim() === '') {
+          dbPlan.name = 'New Plan';
+        }
+        if (!dbPlan.duration_days || isNaN(dbPlan.duration_days) || dbPlan.duration_days < 1) {
+          dbPlan.duration_days = 30;
+        }
+        if (!dbPlan.price || isNaN(dbPlan.price) || dbPlan.price < 0) {
+          dbPlan.price = 1000;
+        }
         
         const result = await window.api.plan.update(planId, dbPlan);
         
         if (result.success) {
-          // Update local state immediately for responsive UI
+          // Update local state with the corrected values
           const updatedPlans = currentPlans.map(plan =>
-            plan.id === planId ? updatedPlan : plan
+            plan.id === planId ? { 
+              ...plan, 
+              [field]: value,
+              // Also sync the database field names for consistency
+              name: dbPlan.name,
+              duration_days: dbPlan.duration_days,
+              price: dbPlan.price,
+              description: dbPlan.description,
+              // Keep UI field names in sync
+              days: dbPlan.duration_days,
+              amount: dbPlan.price
+            } : plan
           );
           handleSettingChange('payment', 'customPlans', updatedPlans);
         } else {
@@ -1038,7 +1062,17 @@ const Settings = () => {
       try {
         const result = await window.api.plan.list();
         if (result.success) {
-          handleSettingChange('payment', 'customPlans', result.data);
+          // Map database fields to UI fields for consistent display
+          const mappedPlans = result.data.map(plan => ({
+            ...plan,
+            // Map database fields to UI fields
+            days: plan.duration_days,
+            amount: plan.price,
+            // Keep original database fields for reference
+            duration_days: plan.duration_days,
+            price: plan.price
+          }));
+          handleSettingChange('payment', 'customPlans', mappedPlans);
         }
       } catch (err) {
         console.error('Failed to load custom plans:', err);
@@ -1079,7 +1113,7 @@ const Settings = () => {
                     <label>Plan Name *</label>
                     <input
                       type="text"
-                      value={plan.name || ''}
+                      value={plan.name || 'New Plan'}
                       onChange={(e) => updatePlan(plan.id, 'name', e.target.value)}
                       className="form-control"
                       placeholder="e.g., Monthly Plan, Student Plan"
@@ -1091,7 +1125,7 @@ const Settings = () => {
                     <label>Amount (₹) *</label>
                     <input
                       type="number"
-                      value={plan.amount || ''}
+                      value={plan.amount || plan.price || '1000'}
                       onChange={(e) => updatePlan(plan.id, 'amount', e.target.value)}
                       className="form-control"
                       min="1"
@@ -1105,7 +1139,7 @@ const Settings = () => {
                     <label>Duration (Days) *</label>
                     <input
                       type="number"
-                      value={plan.days || ''}
+                      value={plan.days || plan.duration_days || '30'}
                       onChange={(e) => updatePlan(plan.id, 'days', e.target.value)}
                       className="form-control"
                       min="1"
